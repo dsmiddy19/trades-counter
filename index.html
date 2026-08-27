@@ -928,6 +928,8 @@
     wsSeq: 0,
     bootSeq: 0,
     reconnectMs: 1200,
+    reconnectTimer: null,
+    wsFallbackTimer: null,
     liveMessages: 0,
     restPolls: 0,
     pollTimer: null,
@@ -1532,7 +1534,6 @@
       }
 
       after = rows[rows.length - 1].trade_id;
-      render();
 
       if (oldest <= cutoff) {
         complete = true;
@@ -1561,7 +1562,7 @@
   }
 
   function startPolling(){
-    stopPolling();
+    if (state.pollTimer) return;
     pollLatest();
     state.pollTimer = setInterval(pollLatest, 5000);
   }
@@ -1575,6 +1576,17 @@
 
   function closeWs(){
     state.wsSeq++;
+
+    if (state.reconnectTimer) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
+
+    if (state.wsFallbackTimer) {
+      clearTimeout(state.wsFallbackTimer);
+      state.wsFallbackTimer = null;
+    }
+
     if (state.ws) {
       try { state.ws.close(); } catch(e) {}
       state.ws = null;
@@ -1587,11 +1599,38 @@
     const ws = new WebSocket("wss://ws-feed.exchange.coinbase.com");
     state.ws = ws;
 
+    if (state.reconnectTimer) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
+
+    if (state.wsFallbackTimer) {
+      clearTimeout(state.wsFallbackTimer);
+      state.wsFallbackTimer = null;
+    }
+
     setStatus("wait","Connecting");
-    log("Opening Coinbase live matches stream...");
+
+    // If the WebSocket cannot open promptly, use REST polling as a temporary fallback.
+    // As soon as the socket opens, polling is stopped so it does not duplicate live work.
+    state.wsFallbackTimer = setTimeout(() => {
+      if (seq !== state.wsSeq) return;
+      if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+        startPolling();
+        setStatus("wait", "Polling");
+        log("Live stream is slow to connect. Using REST polling until it is available.", "warn");
+      }
+    }, 3500);
 
     ws.onopen = () => {
       if (seq !== state.wsSeq) return;
+
+      if (state.wsFallbackTimer) {
+        clearTimeout(state.wsFallbackTimer);
+        state.wsFallbackTimer = null;
+      }
+
+      stopPolling();
       ws.send(JSON.stringify({
         type:"subscribe",
         product_ids:[product],
@@ -1599,7 +1638,7 @@
       }));
       state.reconnectMs = 1200;
       setStatus("live","Live");
-      log("Live stream connected.");
+      log("Live stream connected. Historical window is filling in behind it.");
     };
 
     ws.onmessage = (event) => {
@@ -1621,9 +1660,9 @@
           side: msg.side
         });
         state.liveMessages++;
-        log("Live stream receiving trades.");
+        // Do not write to the DOM on every trade. render() already refreshes the UI once/second.
       } else if (msg.type === "subscriptions") {
-        log("Subscribed to " + product + " matches. Backfill + live stream active.");
+        log("Subscribed to " + product + " matches. Live data is active while history backfills.");
       } else if (msg.type === "error") {
         log("WebSocket error: " + (msg.message || JSON.stringify(msg)), "err");
       }
@@ -1632,14 +1671,28 @@
     ws.onerror = (err) => {
       if (seq !== state.wsSeq) return;
       console.error("WebSocket error", err);
-      log("WebSocket error. Keeping backfilled data and reconnecting...", "warn");
+      startPolling();
+      setStatus("wait", "Polling");
+      log("WebSocket error. Using REST polling while reconnecting...", "warn");
     };
 
     ws.onclose = (e) => {
       if (seq !== state.wsSeq) return;
-      setStatus("dead","Reconnecting");
-      log("WebSocket closed " + e.code + ". Reconnecting in " + Math.round(state.reconnectMs/1000) + "s...", "warn");
-      setTimeout(connectWs, state.reconnectMs);
+
+      if (state.wsFallbackTimer) {
+        clearTimeout(state.wsFallbackTimer);
+        state.wsFallbackTimer = null;
+      }
+
+      startPolling();
+      setStatus("wait","Polling");
+      log("Live stream closed " + e.code + ". Polling temporarily; reconnecting in " + Math.round(state.reconnectMs/1000) + "s...", "warn");
+
+      const delay = state.reconnectMs;
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = null;
+        connectWs();
+      }, delay);
       state.reconnectMs = Math.min(15000, Math.round(state.reconnectMs * 1.7));
     };
   }
@@ -1666,28 +1719,31 @@
     stopAtrRefresh();
     reset();
     render();
-    setStatus("wait","Backfilling");
+
+    // Live data starts immediately. Historical trades and ATR load in parallel.
+    connectWs();
+    startAtrRefresh();
+    log("Starting live stream and backfilling " + el.product.value + " for the last " + el.window.value + "m...");
 
     try {
       const result = await backfill(seq);
       if (result && result.cancelled) return;
 
       state.windowComplete = !!result.complete;
+      render();
 
       if (result.capped) {
-        log("Backfill hit the safety page cap. Ratio may be incomplete for this window.", "warn");
+        log("Live data is active. Historical backfill hit the safety page cap, so the selected window may be incomplete.", "warn");
+      } else if (result.complete) {
+        log("Live data is active. Historical " + el.window.value + "m window is complete.");
       } else {
-        log("Backfill complete. Starting live stream...");
+        log("Live data is active. Historical backfill ended before the full window was confirmed.", "warn");
       }
     } catch (err) {
       console.error(err);
       state.windowComplete = false;
-      log("Backfill failed: " + err.message + ". Live stream will still build from now forward.", "err");
+      log("Historical backfill failed: " + err.message + ". Live data will continue from now forward.", "err");
     }
-
-    startPolling();
-    startAtrRefresh();
-    connectWs();
   }
 
   restore();
