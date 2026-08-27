@@ -4,7 +4,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Trades Counter</title>
+<title>Trades Counter v17</title>
+<meta name="app-version" content="17.0" />
 <style>
   :root{
     --bg:#0c0c0e;
@@ -58,6 +59,16 @@
     margin:0;
     font-size:22px;
     letter-spacing:.2px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+
+  .versionTag{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:850;
+    letter-spacing:.04em;
   }
 
   .topRight{
@@ -684,7 +695,7 @@
 <div class="wrap">
   <div class="card">
     <div class="top">
-      <h1>Trades Counter</h1>
+      <h1>Trades Counter <span class="versionTag">v2026.08.27.2</span></h1>
       <div class="topRight">
         <div class="pricePill"><span id="topMarket" class="priceLabel">BTC-USD</span><span id="topPrice" class="priceValue">—</span></div>
         <div class="status"><span id="statusDot" class="dot dead"></span><span id="statusText">Offline</span></div>
@@ -1485,17 +1496,105 @@
     return new Promise(r => setTimeout(r, ms));
   }
 
-  async function fetchJson(url){
-    try {
-      const res = await fetch(url, {cache:"no-store"});
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return await res.json();
-    } catch (directErr) {
-      const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-      const res = await fetch(proxied, {cache:"no-store"});
-      if (!res.ok) throw new Error("Direct fetch failed (" + directErr.message + "), proxy HTTP " + res.status);
-      return await res.json();
+  async function fetchJson(url, options = {}){
+    const timeoutMs = options.timeoutMs || 12000;
+    const retries = Number.isFinite(options.retries) ? options.retries : 2;
+    const allowProxy = options.allowProxy !== false;
+    let lastErr = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const res = await fetch(url, {cache:"no-store", signal:controller.signal});
+        clearTimeout(timer);
+
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("retry-after"));
+          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(5000, retryAfter * 1000)
+            : Math.min(2500, 350 * Math.pow(2, attempt));
+          lastErr = new Error("HTTP 429");
+          if (attempt < retries) {
+            await sleep(waitMs);
+            continue;
+          }
+          throw lastErr;
+        }
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return await res.json();
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+
+        if (attempt < retries && (err.name === "AbortError" || /HTTP 5\d\d/.test(err.message || ""))) {
+          await sleep(Math.min(1800, 250 * Math.pow(2, attempt)));
+          continue;
+        }
+        break;
+      }
     }
+
+    // A 429 means Coinbase is asking us to slow down. Do not route that through
+    // a public proxy and accidentally hammer the API from another origin.
+    if (!allowProxy || (lastErr && /HTTP 429/.test(lastErr.message || ""))) {
+      throw lastErr || new Error("Request failed");
+    }
+
+    const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(proxied, {cache:"no-store", signal:controller.signal});
+      if (!res.ok) throw new Error("Direct fetch failed (" + (lastErr ? lastErr.message : "unknown") + "), proxy HTTP " + res.status);
+      return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function fetchTradePage(url){
+    let lastErr = null;
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+
+      try {
+        const res = await fetch(url, {cache:"no-store", signal:controller.signal});
+        clearTimeout(timer);
+
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("retry-after"));
+          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(5000, retryAfter * 1000)
+            : Math.min(3000, 400 * Math.pow(2, attempt));
+          lastErr = new Error("HTTP 429");
+          await sleep(waitMs);
+          continue;
+        }
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        const rows = await res.json();
+        return {
+          rows,
+          // Coinbase documents CB-AFTER as the cursor for the next older page.
+          after: res.headers.get("CB-AFTER") || res.headers.get("cb-after") || null
+        };
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+        if (attempt < 3) {
+          await sleep(Math.min(2200, 300 * Math.pow(2, attempt)));
+          continue;
+        }
+      }
+    }
+
+    throw lastErr || new Error("Trade history request failed");
   }
 
   async function backfill(seq){
@@ -1505,18 +1604,25 @@
     let page = 0;
     let added = 0;
     let complete = false;
-    const maxPages = Number(el.window.value) <= 15 ? 40 : 90;
+    let lastProgressAt = 0;
+    let lastOldest = Infinity;
+
+    // High-volume periods can contain well over 40,000 trades in 15 minutes.
+    // Keep paging until we actually reach the requested time cutoff.
+    // This is only an emergency guard against a broken/repeating cursor.
+    const emergencyMaxPages = 1000;
 
     state.windowComplete = false;
-    log("Backfilling " + product + " for the last " + el.window.value + "m...");
+    log("Backfilling " + product + " for the last " + el.window.value + "m while live data continues...");
 
-    while (page < maxPages) {
+    while (page < emergencyMaxPages) {
       if (seq !== state.bootSeq) return {cancelled:true};
 
       let url = "https://api.exchange.coinbase.com/products/" + encodeURIComponent(product) + "/trades?limit=1000";
       if (after !== null) url += "&after=" + encodeURIComponent(after);
 
-      const rows = await fetchJson(url);
+      const pageResult = await fetchTradePage(url);
+      const rows = pageResult.rows;
       if (!Array.isArray(rows) || !rows.length) break;
 
       page++;
@@ -1533,16 +1639,39 @@
         }
       }
 
-      after = rows[rows.length - 1].trade_id;
+      const fallbackAfter = rows[rows.length - 1] && rows[rows.length - 1].trade_id;
+      const nextAfter = pageResult.after || fallbackAfter;
+
+      // Make sure pagination is genuinely moving backward in time.
+      if (nextAfter == null || String(nextAfter) === String(after) || oldest >= lastOldest) {
+        break;
+      }
+
+      after = nextAfter;
+      lastOldest = oldest;
 
       if (oldest <= cutoff) {
         complete = true;
         break;
       }
-      await sleep(140);
+
+      // Show progress without repainting the whole dashboard after every page.
+      const now = performance.now();
+      if (now - lastProgressAt >= 500) {
+        lastProgressAt = now;
+        render();
+        const ageSeconds = Math.max(0, Math.round((Date.now() - oldest) / 1000));
+        log("Live. Backfill checked " + fmtInt(page * 1000) + "+ trades and reached " + ageSeconds + "s ago...");
+        await sleep(0);
+      }
     }
 
-    return {pages:page, added, capped:page >= maxPages && !complete, complete};
+    return {
+      pages: page,
+      added,
+      capped: page >= emergencyMaxPages && !complete,
+      complete
+    };
   }
 
   async function pollLatest(){
@@ -1733,7 +1862,7 @@
       render();
 
       if (result.capped) {
-        log("Live data is active. Historical backfill hit the safety page cap, so the selected window may be incomplete.", "warn");
+        log("Live data is active. Historical backfill hit the emergency cursor cap, so the selected window may be incomplete.", "warn");
       } else if (result.complete) {
         log("Live data is active. Historical " + el.window.value + "m window is complete.");
       } else {
