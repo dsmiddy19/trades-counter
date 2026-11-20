@@ -1097,7 +1097,7 @@
         <div class="gateCard">
           <div class="gateTitle">Session</div>
           <div id="sessionGate" class="gateValue fail">CHECKING</div>
-          <div id="sessionGateSub" class="gateSub">9:30 AM–2:00 PM ET</div>
+          <div id="sessionGateSub" class="gateSub">9:30 AM–4:00 PM ET</div>
         </div>
       </div>
     </div>
@@ -1463,7 +1463,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.20.4";
+  const BUILD_ID = "2026.11.20.5";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
@@ -2128,7 +2128,7 @@
     const weekday=["Mon","Tue","Wed","Thu","Fri"].includes(p.weekday);
     if (!weekday) return {allowed:false,openRisk:false,label:"CLOSED",detail:"Weekday trading only"};
     if (mins<570) return {allowed:false,openRisk:false,label:"CLOSED",detail:"Opens 9:30 AM ET"};
-    if (mins>=840) return {allowed:false,openRisk:false,label:"CLOSED",detail:"Trading stops at 2:00 PM ET"};
+    if (mins>=960) return {allowed:false,openRisk:false,label:"CLOSED",detail:"Trading stops at 4:00 PM ET"};
     if (mins<615) return {allowed:true,openRisk:true,label:"OPEN RISK",detail:"9:30–10:15 · require 3/3 technicals"};
     return {allowed:true,openRisk:false,label:"OPEN",detail:"Normal confirmation · 2/3 technicals"};
   }
@@ -2180,13 +2180,13 @@
     for (const e of relevant) {
       const delta=(e.ts-now)/60000;
       const eventEtMin=etMinutes(new Date(e.ts));
-      if (eventEtMin>840) continue;
+      if (eventEtMin>960) continue;
       const before=e.majorNamed?240:60;
       const after=30;
       if (delta<=before && delta>=-after) { blockedBy={...e,delta,before,after}; break; }
     }
 
-    const next=relevant.find(e=>e.ts>=now && etMinutes(new Date(e.ts))<=840) || null;
+    const next=relevant.find(e=>e.ts>=now && etMinutes(new Date(e.ts))<=960) || null;
     const source=state.macro.source+(state.macro.cached?" · cached":"");
 
     if (blockedBy) {
@@ -2210,7 +2210,7 @@
 
     return {
       ready:true,blocked:false,manual:false,label:"CLEAR",
-      detail:"No major USD event before 2:00 PM",next:null,source
+      detail:"No major USD event before 4:00 PM",next:null,source
     };
   }
 
