@@ -1,0 +1,47 @@
+name: Update SoSoValue ETF market context
+
+on:
+  push:
+    paths:
+      - ".github/scripts/update_market_context.py"
+      - ".github/workflows/update-market-context.yml"
+  schedule:
+    - cron: "17 * * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-market-context:
+    runs-on: ubuntu-latest
+    env:
+      SOSO_API_KEY: ${{ secrets.SOSO_API_KEY }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        run: python -m pip install --quiet requests
+
+      - name: Fetch settled BTC and ETH ETF flows from SoSoValue
+        run: python .github/scripts/update_market_context.py
+
+      - name: Commit market context when changed
+        shell: bash
+        run: |
+          if git diff --quiet -- market-context.json; then
+            echo "Market context unchanged"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add market-context.json
+          git commit -m "Update SoSoValue ETF market context"
+          git push
