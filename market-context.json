@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-11-20T15:45:00Z",
+  "source": "Farside Investors",
+  "source_url": "https://farside.co.uk/btc/",
+  "etf": {
+    "date": "2026-11-19",
+    "btc_1d": -582300000,
+    "eth_1d": -131200000,
+    "btc_5d": -1306200000,
+    "eth_5d": -206200000,
+    "btc_rows": [
+      {"date":"2026-11-13","net_flow":-185400000},
+      {"date":"2026-11-16","net_flow":7900000},
+      {"date":"2026-11-17","net_flow":-239900000},
+      {"date":"2026-11-18","net_flow":-306500000},
+      {"date":"2026-11-19","net_flow":-582300000}
+    ],
+    "eth_rows": [
+      {"date":"2026-11-13","net_flow":2300000},
+      {"date":"2026-11-16","net_flow":-8400000},
+      {"date":"2026-11-17","net_flow":-29100000},
+      {"date":"2026-11-18","net_flow":-39800000},
+      {"date":"2026-11-19","net_flow":-131200000}
+    ],
+    "source_url": "https://farside.co.uk/btc/"
+  }
+}
