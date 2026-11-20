@@ -4,8 +4,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Trades Counter v17</title>
-<meta name="app-version" content="17.0" />
+<title>Trades Counter</title>
 <style>
   :root{
     --bg:#0c0c0e;
@@ -59,16 +58,6 @@
     margin:0;
     font-size:22px;
     letter-spacing:.2px;
-    display:flex;
-    align-items:baseline;
-    gap:8px;
-  }
-
-  .versionTag{
-    color:var(--muted);
-    font-size:11px;
-    font-weight:850;
-    letter-spacing:.04em;
   }
 
   .topRight{
@@ -124,6 +113,202 @@
   .dot.live{background:var(--green);box-shadow:0 0 16px var(--green)}
   .dot.wait{background:var(--yellow);box-shadow:0 0 16px var(--yellow)}
   .dot.dead{background:var(--red);box-shadow:0 0 16px var(--red)}
+
+  .signalHero{
+    display:grid;
+    grid-template-columns:minmax(280px,.9fr) minmax(540px,1.5fr);
+    gap:16px;
+    padding:16px;
+    background:linear-gradient(135deg,#111114 0%,#18181c 100%);
+    border-bottom:1px solid var(--line);
+    transition:background .2s ease,border-color .2s ease;
+  }
+
+  .signalHero.buySignal{
+    background:linear-gradient(135deg,#0d1813 0%,#10251b 100%);
+    border-bottom-color:#176a46;
+  }
+
+  .signalHero.sellSignal{
+    background:linear-gradient(135deg,#1b1013 0%,#2b1218 100%);
+    border-bottom-color:#7d293a;
+  }
+
+  .signalHero.noGoSignal{
+    background:linear-gradient(135deg,#151519 0%,#202024 100%);
+  }
+
+  .signalPrimary{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    min-width:0;
+  }
+
+  .signalEyebrow{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:950;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+  }
+
+  .signalAction{
+    margin-top:2px;
+    font-size:54px;
+    line-height:1;
+    font-weight:1000;
+    letter-spacing:-2px;
+  }
+
+  .signalHero.buySignal .signalAction{color:var(--green)}
+  .signalHero.sellSignal .signalAction{color:var(--red)}
+  .signalHero.noGoSignal .signalAction{color:#f0f0f3}
+
+  .signalReason{
+    margin-top:8px;
+    font-size:14px;
+    line-height:1.35;
+    font-weight:800;
+    color:#d8d8df;
+  }
+
+  .signalRule{
+    margin-top:9px;
+    color:var(--muted);
+    font-size:11px;
+    line-height:1.35;
+  }
+
+  .gateGrid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+    align-content:center;
+  }
+
+  .gateCard{
+    background:#111114cc;
+    border:1px solid #303039;
+    border-radius:9px;
+    padding:10px;
+    min-width:0;
+  }
+
+  .gateTitle{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:950;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+  }
+
+  .gateValue{
+    margin-top:5px;
+    font-size:14px;
+    font-weight:950;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .gateSub{
+    margin-top:4px;
+    color:#aaaab3;
+    font-size:10px;
+    line-height:1.3;
+    min-height:26px;
+  }
+
+  .macroActions{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    margin-top:7px;
+    flex-wrap:wrap;
+  }
+
+  .macroAction{
+    display:none;
+    border:1px solid #4a4a53;
+    border-radius:6px;
+    background:#242429;
+    color:#ededf2;
+    padding:5px 7px;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.04em;
+    cursor:pointer;
+  }
+
+  .macroAction.show{display:inline-flex}
+  .macroAction:hover{background:#303037}
+
+  .gateLink{
+    color:#8fc2ff;
+    text-decoration:none;
+    font-size:9px;
+    font-weight:850;
+  }
+  .gateLink:hover{text-decoration:underline}
+
+  .gateValue.pass{color:#75ffb3}
+  .gateValue.fail{color:#ffd86a}
+  .gateValue.block{color:#ff7f95}
+
+  .techStrip{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:0;
+    border-top:1px solid var(--line);
+    background:#121214;
+  }
+
+  .techCell{
+    padding:11px 12px;
+    border-left:1px solid #2b2b31;
+    min-width:0;
+  }
+
+  .techCell:first-child{border-left:0}
+
+  .techTitle{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .techValue{
+    margin-top:5px;
+    font-size:15px;
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .techSub{
+    margin-top:3px;
+    color:#92929b;
+    font-size:10px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .techBuy{color:var(--green)}
+  .techSell{color:var(--red)}
+  .techNeutral{color:#d8d8de}
+  .techWarn{color:var(--yellow)}
+
+  .sourceLink{
+    color:#9ac5ff;
+    text-decoration:none;
+  }
+  .sourceLink:hover{text-decoration:underline}
 
   .controls{
     display:flex;
@@ -659,6 +844,122 @@
   .warn{color:var(--yellow)}
   .err{color:var(--red)}
 
+
+
+  .titleRow{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    min-width:0;
+    flex-wrap:wrap;
+  }
+
+  .buildStamp{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+
+  .regimeStrip{
+    display:grid;
+    grid-template-columns:minmax(190px,.8fr) minmax(0,2.2fr);
+    gap:12px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    background:#121214;
+  }
+
+  .regimePrimary{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .regimeEyebrow{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:950;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+  }
+
+  .regimeLabel{
+    margin-top:5px;
+    font-size:24px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:-.4px;
+  }
+
+  .regimeLabel.bullish{color:var(--green)}
+  .regimeLabel.bearish{color:var(--red)}
+  .regimeLabel.mixed{color:var(--yellow)}
+  .regimeLabel.loading{color:#d8d8de}
+
+  .regimeReason{
+    margin-top:6px;
+    color:#b6b6bf;
+    font-size:10px;
+    line-height:1.35;
+  }
+
+  .regimeGrid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+    min-width:0;
+  }
+
+  .regimeCard{
+    background:#0f0f12;
+    border:1px solid #2e2e35;
+    border-radius:8px;
+    padding:9px 10px;
+    min-width:0;
+  }
+
+  .regimeCardTitle{
+    color:var(--muted);
+    font-size:9px;
+    font-weight:950;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+  }
+
+  .regimeCardValue{
+    margin-top:5px;
+    font-size:14px;
+    font-weight:950;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .regimeCardValue.bullish{color:var(--green)}
+  .regimeCardValue.bearish{color:var(--red)}
+  .regimeCardValue.mixed{color:var(--yellow)}
+  .regimeCardValue.neutral{color:#d8d8de}
+
+  .regimeCardSub{
+    margin-top:4px;
+    color:#9999a3;
+    font-size:9px;
+    line-height:1.3;
+    min-height:24px;
+  }
+
+  .regimeSource{
+    color:var(--blue);
+    text-decoration:none;
+    font-weight:800;
+  }
+
+  .regimeSource:hover{text-decoration:underline}
+
   @media(max-width:900px){
     .wrap{width:100%;margin:0}
     .card{border-radius:0;border-left:0;border-right:0}
@@ -669,6 +970,11 @@
     #ratio{font-size:72px}
     .compactInfo{grid-template-columns:1fr 1fr}
     .bottom{grid-template-columns:1fr 1fr}
+    .signalHero{grid-template-columns:1fr}
+    .regimeStrip{grid-template-columns:1fr}
+    .regimeGrid{grid-template-columns:1fr 1fr}
+    .gateGrid{grid-template-columns:1fr 1fr}
+    .techStrip{grid-template-columns:1fr 1fr 1fr}
   }
 
   @media(max-width:480px){
@@ -686,7 +992,12 @@
     .levelRow{grid-template-columns:1fr;gap:4px}
     .levelPrice,.levelDelta{text-align:left}
     .bottom{grid-template-columns:1fr}
-    .bottomCell{border-left:0;border-top:1px solid #2b2b31}
+    .signalAction{font-size:48px}
+    .regimeGrid{grid-template-columns:1fr}
+    .gateGrid{grid-template-columns:1fr 1fr}
+    .techStrip{grid-template-columns:1fr}
+    .techCell{border-left:0;border-top:1px solid #2b2b31}
+    .techCell:first-child{border-top:0}    .bottomCell{border-left:0;border-top:1px solid #2b2b31}
     .bottomCell:first-child{border-top:0}
   }
 </style>
@@ -695,10 +1006,78 @@
 <div class="wrap">
   <div class="card">
     <div class="top">
-      <h1>Trades Counter <span class="versionTag">v2026.08.27.2</span></h1>
+      <div class="titleRow">
+        <h1>Trades Counter</h1>
+        <span id="buildStamp" class="buildStamp">Build 2026.11.20.1</span>
+      </div>
       <div class="topRight">
         <div class="pricePill"><span id="topMarket" class="priceLabel">BTC-USD</span><span id="topPrice" class="priceValue">—</span></div>
         <div class="status"><span id="statusDot" class="dot dead"></span><span id="statusText">Offline</span></div>
+      </div>
+    </div>
+
+    <div id="signalHero" class="signalHero noGoSignal">
+      <div class="signalPrimary">
+        <div id="decisionEyebrow" class="signalEyebrow">15m scalp signal</div>
+        <div id="decisionAction" class="signalAction">NO-GO</div>
+        <div id="decisionReason" class="signalReason">Building the 15-minute decision window...</div>
+        <div id="signalRule" class="signalRule">Primary signal: ±1.65 aggression + dominant value ≥1,000. MACD/RSI/CMF confirm. Macro only acts as a safety veto.</div>
+      </div>
+      <div class="gateGrid">
+        <div class="gateCard">
+          <div class="gateTitle">Order flow</div>
+          <div id="flowGate" class="gateValue fail">WAIT</div>
+          <div id="flowGateSub" class="gateSub">Waiting for 15m data</div>
+        </div>
+        <div class="gateCard">
+          <div class="gateTitle">Technicals</div>
+          <div id="techGate" class="gateValue fail">WAIT</div>
+          <div id="techGateSub" class="gateSub">MACD + RSI + CMF</div>
+        </div>
+        <div class="gateCard">
+          <div class="gateTitle">Macro safety</div>
+          <div id="macroGate" class="gateValue fail">CHECKING</div>
+          <div id="macroGateSub" class="gateSub">Loading calendar...</div>
+          <div class="macroActions">
+            <a class="gateLink" href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener">Forex Factory ↗</a>
+            <button id="macroManualClear" class="macroAction" type="button">I checked · clear 30m</button>
+          </div>
+        </div>
+        <div class="gateCard">
+          <div class="gateTitle">Session</div>
+          <div id="sessionGate" class="gateValue fail">CHECKING</div>
+          <div id="sessionGateSub" class="gateSub">9:30 AM–2:00 PM ET</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="regimeStrip" aria-label="Swing market context">
+      <div class="regimePrimary">
+        <div class="regimeEyebrow">Swing context · 4h + ETF flows</div>
+        <div id="regimeLabel" class="regimeLabel loading">LOADING</div>
+        <div id="regimeReason" class="regimeReason">Building higher-timeframe context. This informs the scalp; it does not veto it.</div>
+      </div>
+      <div class="regimeGrid">
+        <div class="regimeCard">
+          <div class="regimeCardTitle">BTC · 4h</div>
+          <div id="btcRegime" class="regimeCardValue neutral">—</div>
+          <div id="btcRegimeSub" class="regimeCardSub">Loading Coinbase candles...</div>
+        </div>
+        <div class="regimeCard">
+          <div class="regimeCardTitle">ETH · 4h</div>
+          <div id="ethRegime" class="regimeCardValue neutral">—</div>
+          <div id="ethRegimeSub" class="regimeCardSub">Loading Coinbase candles...</div>
+        </div>
+        <div class="regimeCard">
+          <div class="regimeCardTitle">US BTC + ETH ETFs · 1d</div>
+          <div id="etf1d" class="regimeCardValue neutral">—</div>
+          <div id="etf1dSub" class="regimeCardSub">Loading flow context...</div>
+        </div>
+        <div class="regimeCard">
+          <div class="regimeCardTitle">US BTC + ETH ETFs · 5d</div>
+          <div id="etf5d" class="regimeCardValue neutral">—</div>
+          <div id="etf5dSub" class="regimeCardSub">Institutional flow trend · <a class="regimeSource" href="https://sosovalue.com/developer/data/etf" target="_blank" rel="noopener">SoSoValue ↗</a></div>
+        </div>
       </div>
     </div>
 
@@ -706,12 +1085,12 @@
       <label>Market
         <select id="product">
           <option value="BTC-USD">BTC-USD</option>
-          <option value="ETH-USD">ETH-USD</option>
+          <option value="ETH-USD" selected>ETH-USD</option>
           <option value="SOL-USD">SOL-USD</option>
           <option value="AVAX-USD">AVAX-USD</option>
         </select>
       </label>
-      <label>Window
+      <label>Display
         <select id="window">
           <option value="1">1m</option>
           <option value="5">5m</option>
@@ -721,7 +1100,7 @@
         </select>
       </label>
       <label>Threshold
-        <input id="threshold" type="text" value="1.8" size="4" inputmode="decimal" autocomplete="off" />
+        <input id="threshold" type="text" value="1.65" size="4" inputmode="decimal" autocomplete="off" />
       </label>
       <button id="refresh" type="button">Refresh</button>
     </div>
@@ -764,7 +1143,7 @@
 
         <div class="compactInfo">
           <div class="mini"><div class="miniTitle">Market</div><div id="marketInfo" class="miniValue">BTC-USD</div></div>
-          <div class="mini"><div class="miniTitle">Window</div><div id="windowInfo" class="miniValue">15m</div></div>
+          <div class="mini"><div class="miniTitle">Display window</div><div id="windowInfo" class="miniValue">15m</div></div>
           <div class="mini"><div class="miniTitle">Threshold</div><div id="thresholdInfo" class="miniValue">±1.80</div></div>
           <div class="mini"><div class="miniTitle">Ratio basis</div><div id="basisInfo" class="miniValue">Volume</div></div>
         </div>
@@ -856,6 +1235,29 @@
       </div>
     </div>
 
+    <div class="techStrip">
+      <div class="techCell">
+        <div id="macdTitle" class="techTitle">MACD · 15m</div>
+        <div id="macdValue" class="techValue techNeutral">—</div>
+        <div id="macdSub" class="techSub">12 / 26 / 9</div>
+      </div>
+      <div class="techCell">
+        <div id="rsiTitle" class="techTitle">RSI(14) · 15m</div>
+        <div id="rsiValue" class="techValue techNeutral">—</div>
+        <div id="rsiSub" class="techSub">48–52 neutral zone</div>
+      </div>
+      <div class="techCell">
+        <div id="cmfTitle" class="techTitle">CMF(20) · 15m</div>
+        <div id="cmfValue" class="techValue techNeutral">—</div>
+        <div id="cmfSub" class="techSub">±0.05 confirmation</div>
+      </div>
+      <div class="techCell">
+        <div class="techTitle">Local tech votes</div>
+        <div id="technicalSummary" class="techValue techNeutral">Waiting</div>
+        <div id="technicalSummarySub" class="techSub">Coinbase 15m · <a id="crossCheckLink" class="sourceLink" href="https://www.tradingview.com/symbols/ETHUSDT/technicals/?exchange=BINANCE" target="_blank" rel="noopener">TradingView check</a></div>
+      </div>
+    </div>
+
     <div class="bottom">
       <div class="bottomCell"><div class="bottomTitle">Source</div><div id="dataSource" class="bottomValue">Coinbase spot</div></div>
       <div class="bottomCell"><div class="bottomTitle">Window status</div><div id="windowStatus" class="bottomValue">partial</div></div>
@@ -884,6 +1286,43 @@
     window:$("window"),
     threshold:$("threshold"),
     refresh:$("refresh"),
+    buildStamp:$("buildStamp"),
+    regimeLabel:$("regimeLabel"),
+    regimeReason:$("regimeReason"),
+    btcRegime:$("btcRegime"),
+    btcRegimeSub:$("btcRegimeSub"),
+    ethRegime:$("ethRegime"),
+    ethRegimeSub:$("ethRegimeSub"),
+    etf1d:$("etf1d"),
+    etf1dSub:$("etf1dSub"),
+    etf5d:$("etf5d"),
+    etf5dSub:$("etf5dSub"),
+    signalHero:$("signalHero"),
+    decisionEyebrow:$("decisionEyebrow"),
+    signalRule:$("signalRule"),
+    crossCheckLink:$("crossCheckLink"),
+    decisionAction:$("decisionAction"),
+    decisionReason:$("decisionReason"),
+    flowGate:$("flowGate"),
+    flowGateSub:$("flowGateSub"),
+    techGate:$("techGate"),
+    techGateSub:$("techGateSub"),
+    macroGate:$("macroGate"),
+    macroGateSub:$("macroGateSub"),
+    macroManualClear:$("macroManualClear"),
+    sessionGate:$("sessionGate"),
+    sessionGateSub:$("sessionGateSub"),
+    macdValue:$("macdValue"),
+    macdSub:$("macdSub"),
+    rsiValue:$("rsiValue"),
+    rsiSub:$("rsiSub"),
+    cmfValue:$("cmfValue"),
+    cmfSub:$("cmfSub"),
+    technicalSummary:$("technicalSummary"),
+    technicalSummarySub:$("technicalSummarySub"),
+    macdTitle:$("macdTitle"),
+    rsiTitle:$("rsiTitle"),
+    cmfTitle:$("cmfTitle"),
     statusDot:$("statusDot"),
     statusText:$("statusText"),
     topMarket:$("topMarket"),
@@ -939,19 +1378,50 @@
     wsSeq: 0,
     bootSeq: 0,
     reconnectMs: 1200,
-    reconnectTimer: null,
-    wsFallbackTimer: null,
     liveMessages: 0,
     restPolls: 0,
     pollTimer: null,
     atrTimer: null,
     atr: { value: NaN, percent: NaN, bars: 0, window: "" },
+    technicalTimer: null,
+    technicals: { status:"loading", macd:NaN, signal:NaN, histogram:NaN, prevHistogram:NaN, rsi:NaN, prevRsi:NaN, cmf:NaN, prevCmf:NaN, updatedAt:0 },
+    macroTimer: null,
+    macro: { status:"loading", events:[], updatedAt:0, error:"", source:"", cached:false },
+    macroManualClearUntil: 0,
+    regimeTimer: null,
+    regime: {
+      status:"loading",
+      btc:null,
+      eth:null,
+      etf:{status:"loading",date:"",btc1d:NaN,eth1d:NaN,btc5d:NaN,eth5d:NaN,valueTraded1d:NaN,netAssets:NaN,updatedAt:0,source:"",sourceUrl:""},
+      updatedAt:0
+    },
     lastTradeTs: 0,
     lastPrice: NaN,
     bootStartedAt: 0,
     windowComplete: false,
     previousSignal: "none",
     lastCrossText: "none"
+  };
+
+  const MIN_DOMINANT_VOLUME = 1000;
+  const MACRO_LOCAL_URL = "./calendar.json";
+  const MACRO_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+  const MACRO_CACHE_KEY = "tc.macro.cache.v1";
+  const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+  const ET_ZONE = "America/New_York";
+  const BUILD_ID = "2026.11.20.3";
+  const MARKET_CONTEXT_URL = "./market-context.json";
+  // Last-known completed US spot ETF flows. Fallback only: a deployed
+  // market-context.json replaces this snapshot automatically.
+  const EMBEDDED_ETF_FALLBACK = {
+    date:"2026-11-19",
+    btc_1d:-582300000,
+    eth_1d:-131200000,
+    btc_5d:-1306200000,
+    eth_5d:-206200000,
+    source:"Farside Investors · embedded snapshot",
+    source_url:"https://farside.co.uk/btc/"
   };
 
   function setStatus(mode, text){
@@ -967,13 +1437,13 @@
   function save(){
     localStorage.setItem("tc.product", el.product.value);
     localStorage.setItem("tc.window", el.window.value);
-    localStorage.setItem("tc.threshold", el.threshold.value);
+    localStorage.setItem("tc.threshold.v2", el.threshold.value);
   }
 
   function restore(){
     const p = localStorage.getItem("tc.product");
     const w = localStorage.getItem("tc.window");
-    const t = localStorage.getItem("tc.threshold");
+    const t = localStorage.getItem("tc.threshold.v2");
     if (p && [...el.product.options].some(o => o.value === p)) el.product.value = p;
     if (w && [...el.window.options].some(o => o.value === w)) el.window.value = w;
     if (t) el.threshold.value = t;
@@ -984,7 +1454,7 @@
   function threshold(){
     const raw = String(el.threshold.value).trim().replace(",", ".");
     const n = Number(raw);
-    if (!Number.isFinite(n) || n <= 1) return 1.8;
+    if (!Number.isFinite(n) || n <= 1) return 1.65;
     return n;
   }
 
@@ -996,6 +1466,11 @@
     if (a >= 1_000) return (n/1_000).toFixed(2)+"k";
     if (a >= 100) return n.toFixed(1);
     return n.toFixed(2);
+  }
+
+  function fmtSignalVol(n){
+    if (!Number.isFinite(n)) return "0.0";
+    return n.toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
   }
 
   function fmtInt(n){ return Math.round(n).toLocaleString(); }
@@ -1316,6 +1791,192 @@
     return { value, bars: trueRanges.length };
   }
 
+  function emaSeries(values, period){
+    const out = new Array(values.length).fill(NaN);
+    if (values.length < period) return out;
+
+    let seed = 0;
+    for (let i=0;i<period;i++) seed += values[i];
+    out[period-1] = seed / period;
+    const k = 2 / (period + 1);
+
+    for (let i=period;i<values.length;i++) {
+      out[i] = values[i] * k + out[i-1] * (1-k);
+    }
+    return out;
+  }
+
+  function calculateMacd(closes){
+    if (!Array.isArray(closes) || closes.length < 36) return {macd:NaN,signal:NaN,histogram:NaN,prevHistogram:NaN};
+    const e12 = emaSeries(closes,12);
+    const e26 = emaSeries(closes,26);
+    const macdVals = [];
+    for (let i=0;i<closes.length;i++) {
+      if (Number.isFinite(e12[i]) && Number.isFinite(e26[i])) macdVals.push(e12[i]-e26[i]);
+    }
+    const sigVals = emaSeries(macdVals,9);
+    if (!macdVals.length || !Number.isFinite(sigVals[sigVals.length-1])) return {macd:NaN,signal:NaN,histogram:NaN,prevHistogram:NaN};
+    const macd = macdVals[macdVals.length-1];
+    const signal = sigVals[sigVals.length-1];
+    const histogram = macd - signal;
+    let prevHistogram = NaN;
+    if (macdVals.length >= 2 && Number.isFinite(sigVals[sigVals.length-2])) {
+      prevHistogram = macdVals[macdVals.length-2] - sigVals[sigVals.length-2];
+    }
+    return {macd,signal,histogram,prevHistogram};
+  }
+
+  function calculateRsi(closes, period=14){
+    if (!Array.isArray(closes) || closes.length < period + 1) return NaN;
+    let gains=0, losses=0;
+    for (let i=1;i<=period;i++) {
+      const d=closes[i]-closes[i-1];
+      if (d>=0) gains += d; else losses -= d;
+    }
+    let avgGain=gains/period;
+    let avgLoss=losses/period;
+    for (let i=period+1;i<closes.length;i++) {
+      const d=closes[i]-closes[i-1];
+      const gain=d>0?d:0;
+      const loss=d<0?-d:0;
+      avgGain=((avgGain*(period-1))+gain)/period;
+      avgLoss=((avgLoss*(period-1))+loss)/period;
+    }
+    if (avgLoss===0) return 100;
+    const rs=avgGain/avgLoss;
+    return 100-(100/(1+rs));
+  }
+
+  function calculateCmf(bars, period=20){
+    if (!Array.isArray(bars) || bars.length < period) return NaN;
+    const recent=bars.slice(-period);
+    let mfv=0, volume=0;
+    for (const b of recent) {
+      const range=b.high-b.low;
+      const mfm=range===0?0:(((b.close-b.low)-(b.high-b.close))/range);
+      const v=Number.isFinite(b.volume)?b.volume:0;
+      mfv += mfm*v;
+      volume += v;
+    }
+    return volume>0?mfv/volume:NaN;
+  }
+
+  async function refreshTechnicals(){
+    const product=el.product.value;
+    const minutes=decisionWindowMinutes();
+    const seconds=minutes*60;
+    const granularity=coinbaseCandleGranularity(seconds);
+    const endMs=Date.now();
+    const startMs=endMs-(seconds*1000*120);
+    try {
+      const rows=await fetchJson(candleUrl(product,startMs,endMs,granularity));
+      let bars=normalizeCandles(rows);
+      if (seconds===1800) bars=aggregateCandles(bars,1800);
+      const closes=bars.map(b=>b.close);
+      const macd=calculateMacd(closes);
+      const rsi=calculateRsi(closes,14);
+      const prevRsi=calculateRsi(closes.slice(0,-1),14);
+      const cmf=calculateCmf(bars,20);
+      const prevCmf=calculateCmf(bars.slice(0,-1),20);
+      state.technicals={
+        status:"ok",
+        macd:macd.macd,
+        signal:macd.signal,
+        histogram:macd.histogram,
+        prevHistogram:macd.prevHistogram,
+        rsi,prevRsi,cmf,prevCmf,updatedAt:Date.now()
+      };
+    } catch(err) {
+      console.warn("Technical refresh failed",err);
+      state.technicals={status:"error",macd:NaN,signal:NaN,histogram:NaN,prevHistogram:NaN,rsi:NaN,prevRsi:NaN,cmf:NaN,prevCmf:NaN,updatedAt:Date.now()};
+    }
+  }
+
+  function startTechnicalRefresh(){
+    stopTechnicalRefresh();
+    refreshTechnicals();
+    state.technicalTimer=setInterval(refreshTechnicals,30000);
+  }
+
+  function stopTechnicalRefresh(){
+    if (state.technicalTimer) { clearInterval(state.technicalTimer); state.technicalTimer=null; }
+  }
+
+  function macroRowsLookCurrent(rows){
+    if (!Array.isArray(rows) || !rows.length) return false;
+    const now=Date.now();
+    const maxTs=Math.max(...rows.map(e=>e&&e.date?new Date(e.date).getTime():NaN).filter(Number.isFinite));
+    // A weekly feed is usable if it still contains today or future events.
+    return Number.isFinite(maxTs) && maxTs >= now - (24*60*60*1000);
+  }
+
+  async function fetchLocalJson(url){
+    const joiner=url.includes("?")?"&":"?";
+    const res=await fetch(url+joiner+"v="+Date.now(),{cache:"no-store"});
+    if (!res.ok) throw new Error("HTTP "+res.status);
+    return await res.json();
+  }
+
+  function saveMacroCache(rows){
+    try {
+      localStorage.setItem(MACRO_CACHE_KEY,JSON.stringify({savedAt:Date.now(),events:rows}));
+    } catch(e) {}
+  }
+
+  function readMacroCache(){
+    try {
+      const raw=localStorage.getItem(MACRO_CACHE_KEY);
+      if (!raw) return null;
+      const parsed=JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.events) || !Number.isFinite(parsed.savedAt)) return null;
+      if (Date.now()-parsed.savedAt > MACRO_CACHE_MAX_AGE_MS) return null;
+      if (!macroRowsLookCurrent(parsed.events)) return null;
+      return parsed;
+    } catch(e) { return null; }
+  }
+
+  async function refreshMacro(){
+    const errors=[];
+
+    // Best path on GitHub Pages: same-origin file refreshed by the included GitHub Action.
+    try {
+      const rows=await fetchLocalJson(MACRO_LOCAL_URL);
+      if (!macroRowsLookCurrent(rows)) throw new Error("calendar.json is stale or empty");
+      state.macro={status:"ok",events:rows,updatedAt:Date.now(),error:"",source:"GitHub calendar mirror",cached:false};
+      saveMacroCache(rows);
+      return;
+    } catch(err) { errors.push("mirror: "+(err.message||err)); }
+
+    // Fallback: try Forex Factory's weekly JSON directly / through the existing proxy fallback.
+    try {
+      const rows=await fetchJson(MACRO_URL);
+      if (!macroRowsLookCurrent(rows)) throw new Error("Forex Factory feed is stale or empty");
+      state.macro={status:"ok",events:rows,updatedAt:Date.now(),error:"",source:"Forex Factory live",cached:false};
+      saveMacroCache(rows);
+      return;
+    } catch(err) { errors.push("live: "+(err.message||err)); }
+
+    // Last resort: a recently successful calendar is better than an empty panel, but label it clearly.
+    const cached=readMacroCache();
+    if (cached) {
+      state.macro={status:"ok",events:cached.events,updatedAt:cached.savedAt,error:errors.join(" | "),source:"Cached calendar",cached:true};
+      return;
+    }
+
+    console.warn("Macro calendar refresh failed",errors.join(" | "));
+    state.macro={status:"error",events:[],updatedAt:Date.now(),error:errors.join(" | "),source:"",cached:false};
+  }
+
+  function startMacroRefresh(){
+    stopMacroRefresh();
+    refreshMacro();
+    state.macroTimer=setInterval(refreshMacro,5*60*1000);
+  }
+
+  function stopMacroRefresh(){
+    if (state.macroTimer) { clearInterval(state.macroTimer); state.macroTimer=null; }
+  }
+
   async function refreshAtr(){
     const length = 14;
     const product = el.product.value;
@@ -1335,8 +1996,7 @@
       }
 
       const atr = calculateAtrFromBars(bars, length);
-      state.atr = {
-        value: atr.value,
+      state.atr = {        value: atr.value,
         percent: Number.isFinite(atr.value) && Number.isFinite(state.lastPrice) && state.lastPrice
           ? (atr.value / state.lastPrice) * 100
           : NaN,
@@ -1374,8 +2034,482 @@
     return {text:"-"+(1/r).toFixed(2), signed:-(1/r), mag:1/r};
   }
 
+  function etParts(date=new Date()){
+    const parts={};
+    const fmt=new Intl.DateTimeFormat("en-US",{
+      timeZone:ET_ZONE,weekday:"short",year:"numeric",month:"2-digit",day:"2-digit",
+      hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"
+    });
+    for (const p of fmt.formatToParts(date)) { if (p.type!=="literal") parts[p.type]=p.value; }
+    return {
+      weekday:parts.weekday,year:Number(parts.year),month:Number(parts.month),day:Number(parts.day),
+      hour:Number(parts.hour),minute:Number(parts.minute),second:Number(parts.second)
+    };
+  }
+
+  function etDateKey(date=new Date()){
+    const p=etParts(date);
+    return p.year+"-"+String(p.month).padStart(2,"0")+"-"+String(p.day).padStart(2,"0");
+  }
+
+  function etMinutes(date=new Date()){
+    const p=etParts(date);
+    return p.hour*60+p.minute;
+  }
+
+  function fmtEtTime(date){
+    return date.toLocaleTimeString("en-US",{timeZone:ET_ZONE,hour:"numeric",minute:"2-digit"})+" ET";
+  }
+
+  function fmtCountdown(minutes){
+    if (!Number.isFinite(minutes)) return "";
+    const m=Math.max(0,Math.round(minutes));
+    if (m<60) return m+"m";
+    const h=Math.floor(m/60), rem=m%60;
+    return h+"h"+(rem?" "+rem+"m":"");
+  }
+
+  function sessionInfo(){
+    const p=etParts();
+    const mins=p.hour*60+p.minute;
+    const weekday=["Mon","Tue","Wed","Thu","Fri"].includes(p.weekday);
+    if (!weekday) return {allowed:false,openRisk:false,label:"CLOSED",detail:"Weekday trading only"};
+    if (mins<570) return {allowed:false,openRisk:false,label:"CLOSED",detail:"Opens 9:30 AM ET"};
+    if (mins>=840) return {allowed:false,openRisk:false,label:"CLOSED",detail:"Trading stops at 2:00 PM ET"};
+    if (mins<615) return {allowed:true,openRisk:true,label:"OPEN RISK",detail:"9:30–10:15 · require 3/3 technicals"};
+    return {allowed:true,openRisk:false,label:"OPEN",detail:"Normal confirmation · 2/3 technicals"};
+  }
+
+  function decisionWindowMinutes(){ return Number(el.window.value) || 15; }
+
+  function decisionWindowComplete(){
+    if (!state.trades.length) return false;
+    const mins=decisionWindowMinutes();
+    let oldest=Infinity;
+    for (const t of state.trades) if (t.ts<oldest) oldest=t.ts;
+    return oldest <= Date.now()-(mins*60*1000)+30000;
+  }
+
+  function isMajorNamedEvent(title){
+    return /Powell|Fed Chair|FOMC.*(?:Statement|Minutes|Rate)|Federal Funds Rate|President Trump|Treasury Secretary|Jackson Hole/i.test(title||"");
+  }
+
+  function macroInfo(){
+    const now=Date.now();
+
+    if (state.macro.status==="loading") {
+      return {ready:false,blocked:false,manual:false,label:"CHECKING",detail:"Loading calendar...",next:null,source:""};
+    }
+
+    if (state.macro.status!=="ok") {
+      if (state.macroManualClearUntil>now) {
+        return {
+          ready:true,blocked:false,manual:true,label:"MANUAL CLEAR",
+          detail:"Manual check · expires "+fmtEtTime(new Date(state.macroManualClearUntil)),
+          next:null,source:"Manual check"
+        };
+      }
+      return {
+        ready:false,blocked:false,manual:true,label:"CHECK MANUALLY",
+        detail:"Calendar feed unavailable",next:null,source:""
+      };
+    }
+
+    const today=etDateKey();
+    const events=state.macro.events
+      .filter(e=>e && e.country==="USD" && e.date && etDateKey(new Date(e.date))===today)
+      .map(e=>({...e,ts:new Date(e.date).getTime(),majorNamed:isMajorNamedEvent(e.title)}))
+      .filter(e=>Number.isFinite(e.ts))
+      .sort((a,b)=>a.ts-b.ts);
+
+    const relevant=events.filter(e=>e.impact==="High" || e.majorNamed);
+    let blockedBy=null;
+    for (const e of relevant) {
+      const delta=(e.ts-now)/60000;
+      const eventEtMin=etMinutes(new Date(e.ts));
+      if (eventEtMin>840) continue;
+      const before=e.majorNamed?240:60;
+      const after=30;
+      if (delta<=before && delta>=-after) { blockedBy={...e,delta,before,after}; break; }
+    }
+
+    const next=relevant.find(e=>e.ts>=now && etMinutes(new Date(e.ts))<=840) || null;
+    const source=state.macro.source+(state.macro.cached?" · cached":"");
+
+    if (blockedBy) {
+      const d=blockedBy.delta;
+      const when=d>=0?"in "+fmtCountdown(d):fmtCountdown(-d)+" ago";
+      return {
+        ready:true,blocked:true,manual:false,label:"BLOCK",
+        detail:(blockedBy.title||"Major USD event")+" · "+fmtEtTime(new Date(blockedBy.ts))+" · "+when,
+        next:blockedBy,source
+      };
+    }
+
+    if (next) {
+      return {
+        ready:true,blocked:false,manual:false,label:"CLEAR",
+        detail:"Next: "+next.title+" · "+fmtEtTime(new Date(next.ts)),
+        next,source
+      };
+    }
+
+    return {
+      ready:true,blocked:false,manual:false,label:"CLEAR",
+      detail:"No major USD event before 2:00 PM",next:null,source
+    };
+  }
+
+
+  function fmtPctSigned(n){
+    if (!Number.isFinite(n)) return "—";
+    return (n>0?"+":"") + n.toFixed(1) + "%";
+  }
+
+  function fmtMoneyCompact(n){
+    if (!Number.isFinite(n)) return "—";
+    const sign=n<0?"-":"";
+    const a=Math.abs(n);
+    if (a>=1e9) return sign+"$"+(a/1e9).toFixed(a>=10e9?1:2)+"B";
+    if (a>=1e6) return sign+"$"+(a/1e6).toFixed(a>=100e6?0:1)+"M";
+    if (a>=1e3) return sign+"$"+(a/1e3).toFixed(1)+"K";
+    return sign+"$"+a.toFixed(0);
+  }
+
+  function lastFinite(arr){
+    for (let i=arr.length-1;i>=0;i--) if (Number.isFinite(arr[i])) return arr[i];
+    return NaN;
+  }
+
+  function trendFromHourly(hourly){
+    if (!Array.isArray(hourly) || hourly.length < 210) return null;
+    const bars4h=aggregateCandles(hourly,4*60*60);
+    if (bars4h.length < 52) return null;
+    const closes=bars4h.map(x=>x.close);
+    const ema20=lastFinite(emaSeries(closes,20));
+    const ema50=lastFinite(emaSeries(closes,50));
+    const rsi=calculateRsi(closes,14);
+    const close=closes[closes.length-1];
+    const hourlyClose=hourly[hourly.length-1].close;
+    const old24=hourly.length>=25?hourly[hourly.length-25].close:NaN;
+    const change24=Number.isFinite(old24)&&old24?((hourlyClose/old24)-1)*100:NaN;
+
+    let trend="mixed", score=0;
+    if (Number.isFinite(close)&&Number.isFinite(ema20)&&Number.isFinite(ema50)) {
+      if (close>ema20 && ema20>ema50) { trend="bullish"; score+=2; }
+      else if (close<ema20 && ema20<ema50) { trend="bearish"; score-=2; }
+      else {
+        if (close>ema20 && close>ema50) score+=1;
+        if (close<ema20 && close<ema50) score-=1;
+      }
+    }
+    if (Number.isFinite(rsi)) {
+      if (rsi>=55) score+=1;
+      else if (rsi<=45) score-=1;
+    }
+    if (trend==="mixed") {
+      if (score>=2) trend="bullish";
+      else if (score<=-2) trend="bearish";
+    }
+    return {trend,score,close,ema20,ema50,rsi,change24,bars:bars4h.length};
+  }
+
+  async function fetchRegimeAsset(product){
+    const endMs=Date.now();
+    const startMs=endMs-(12*24*60*60*1000);
+    const rows=await fetchJson(candleUrl(product,startMs,endMs,3600));
+    const hourly=normalizeCandles(rows);
+    return trendFromHourly(hourly);
+  }
+
+  function etfSnapshotAgeDays(dateText){
+    if (!dateText) return Infinity;
+    const d=new Date(dateText+"T12:00:00-05:00");
+    if (!Number.isFinite(d.getTime())) return Infinity;
+    return Math.max(0,(Date.now()-d.getTime())/(24*60*60*1000));
+  }
+
+  function etfContextFrom(raw,status,source,error){
+    return {
+      status,
+      date:String(raw.date||""),
+      btc1d:Number(raw.btc_1d),
+      eth1d:Number(raw.eth_1d),
+      btc5d:Number(raw.btc_5d),
+      eth5d:Number(raw.eth_5d),
+      valueTraded1d:Number(raw.total_value_traded_1d ?? ((Number(raw.btc_value_traded_1d)||0)+(Number(raw.eth_value_traded_1d)||0))),
+      netAssets:Number(raw.total_net_assets ?? ((Number(raw.btc_net_assets)||0)+(Number(raw.eth_net_assets)||0))),
+      updatedAt:Date.now(),
+      source:source||String(raw.source||""),
+      sourceUrl:String(raw.source_url||""),
+      error:error||""
+    };
+  }
+
+  async function refreshEtfContext(){
+    try {
+      const url=MARKET_CONTEXT_URL+(MARKET_CONTEXT_URL.includes("?")?"&":"?")+"t="+Date.now();
+      const res=await fetch(url,{cache:"no-store"});
+      if (!res.ok) throw new Error("HTTP "+res.status);
+      const j=await res.json();
+      const e=j && j.etf ? j.etf : j;
+      const next=etfContextFrom(e,"ok",String(j&&j.source||"SoSoValue API"),"");
+      if (![next.btc1d,next.eth1d,next.btc5d,next.eth5d].some(Number.isFinite)) throw new Error("ETF fields missing");
+      state.regime.etf=next;
+    } catch(err) {
+      state.regime.etf=etfContextFrom(
+        EMBEDDED_ETF_FALLBACK,
+        "fallback",
+        EMBEDDED_ETF_FALLBACK.source,
+        String(err&&err.message||err)
+      );
+    }
+  }
+
+  async function refreshRegime(){
+    const results=await Promise.allSettled([fetchRegimeAsset("BTC-USD"),fetchRegimeAsset("ETH-USD"),refreshEtfContext()]);
+    state.regime.btc=results[0].status==="fulfilled"?results[0].value:null;
+    state.regime.eth=results[1].status==="fulfilled"?results[1].value:null;
+    state.regime.status=(state.regime.btc||state.regime.eth)?"ok":"error";
+    state.regime.updatedAt=Date.now();
+    renderRegime();
+  }
+
+  function startRegimeRefresh(){
+    stopRegimeRefresh();
+    refreshRegime();
+    state.regimeTimer=setInterval(refreshRegime,5*60*1000);
+  }
+
+  function stopRegimeRefresh(){
+    if (state.regimeTimer) { clearInterval(state.regimeTimer); state.regimeTimer=null; }
+  }
+
+  function etfScore(){
+    const e=state.regime.etf;
+    if (!e || !["ok","fallback"].includes(e.status)) return {score:0,ready:false,one:NaN,five:NaN,stale:true};
+    const one=(Number.isFinite(e.btc1d)?e.btc1d:0)+(Number.isFinite(e.eth1d)?e.eth1d:0);
+    const five=(Number.isFinite(e.btc5d)?e.btc5d:0)+(Number.isFinite(e.eth5d)?e.eth5d:0);
+    const stale=etfSnapshotAgeDays(e.date)>7;
+    let score=0;
+    if (!stale) {
+      if (one>=100e6) score+=1; else if (one<=-100e6) score-=1;
+      if (five>=500e6) score+=2; else if (five<=-500e6) score-=2;
+      else if (five>=100e6) score+=1; else if (five<=-100e6) score-=1;
+    }
+    return {score,ready:true,one,five,stale};
+  }
+
+  function regimeInfo(){
+    const b=state.regime.btc, e=state.regime.eth, f=etfScore();
+    if (!b && !e) return {ready:false,bias:"mixed",score:0,label:"LOADING",detail:"Building BTC/ETH 4h context."};
+    let score=(b?b.score:0)+(e?e.score:0)+(f.ready?f.score:0);
+    let bias="mixed", label="MIXED SWING";
+    if (score>=4) { bias="bullish"; label="BULLISH SWING"; }
+    else if (score<=-4) { bias="bearish"; label="BEARISH SWING"; }
+    const parts=[];
+    if (b) parts.push("BTC "+b.trend);
+    if (e) parts.push("ETH "+e.trend);
+    if (f.ready) parts.push("ETF "+(f.five>0?"inflows":f.five<0?"outflows":"flat")+(f.stale?" (stale)":""));
+    return {ready:true,bias,score,label,detail:parts.join(" · ")+". Context only; scalp gates remain independent."};
+  }
+
+  function applyRegimeCard(valueEl, subEl, data){
+    if (!data) {
+      valueEl.className="regimeCardValue neutral";
+      valueEl.textContent="UNAVAILABLE";
+      subEl.textContent="Higher-timeframe Coinbase data unavailable";
+      return;
+    }
+    valueEl.className="regimeCardValue "+data.trend;
+    valueEl.textContent=data.trend.toUpperCase();
+    const emaText=(data.close>data.ema20?">":"<")+" EMA20 · "+(data.close>data.ema50?">":"<")+" EMA50";
+    subEl.textContent="24h "+fmtPctSigned(data.change24)+" · RSI "+(Number.isFinite(data.rsi)?data.rsi.toFixed(0):"—")+" · "+emaText;
+  }
+
+  function renderRegime(){
+    if (el.buildStamp) el.buildStamp.textContent="Build "+BUILD_ID;
+    const info=regimeInfo();
+    el.regimeLabel.className="regimeLabel "+(info.ready?info.bias:"loading");
+    el.regimeLabel.textContent=info.label;
+    el.regimeReason.textContent=info.detail;
+    applyRegimeCard(el.btcRegime,el.btcRegimeSub,state.regime.btc);
+    applyRegimeCard(el.ethRegime,el.ethRegimeSub,state.regime.eth);
+
+    const e=state.regime.etf;
+    if (e && ["ok","fallback"].includes(e.status)) {
+      const one=(Number.isFinite(e.btc1d)?e.btc1d:0)+(Number.isFinite(e.eth1d)?e.eth1d:0);
+      const five=(Number.isFinite(e.btc5d)?e.btc5d:0)+(Number.isFinite(e.eth5d)?e.eth5d:0);
+      const snapshot=e.status==="fallback";
+      const stale=etfSnapshotAgeDays(e.date)>7;
+      const tag=snapshot?(stale?" · STALE SNAPSHOT":" · SNAPSHOT"):"";
+      el.etf1d.className="regimeCardValue "+(one>0?"bullish":one<0?"bearish":"mixed");
+      el.etf1d.textContent=fmtMoneyCompact(one);
+      const traded=Number.isFinite(e.valueTraded1d)&&e.valueTraded1d>0?" · traded "+fmtMoneyCompact(e.valueTraded1d):"";
+      el.etf1dSub.textContent="BTC "+fmtMoneyCompact(e.btc1d)+" · ETH "+fmtMoneyCompact(e.eth1d)+(e.date?" · "+e.date:"")+traded+tag;
+      el.etf5d.className="regimeCardValue "+(five>0?"bullish":five<0?"bearish":"mixed");
+      el.etf5d.textContent=fmtMoneyCompact(five);
+      const sourceUrl=e.sourceUrl||"https://sosovalue.com/developer/data/etf";
+      const sourceName=(e.source||"").toLowerCase().includes("farside")?"Farside":"SoSoValue";
+      el.etf5dSub.innerHTML="BTC "+fmtMoneyCompact(e.btc5d)+" · ETH "+fmtMoneyCompact(e.eth5d)+tag+" · <a class=\"regimeSource\" href=\""+sourceUrl+"\" target=\"_blank\" rel=\"noopener\">"+sourceName+" ↗</a>";
+    } else {
+      el.etf1d.className=el.etf5d.className="regimeCardValue neutral";
+      el.etf1d.textContent=el.etf5d.textContent="UNAVAILABLE";
+      el.etf1dSub.textContent="No ETF snapshot available; scalp signal is unaffected";
+      el.etf5dSub.innerHTML="<a class=\"regimeSource\" href=\"https://sosovalue.com/developer/data/etf\" target=\"_blank\" rel=\"noopener\">Check SoSoValue ↗</a>";
+    }
+  }
+
+  function technicalVotes(){
+    const t=state.technicals;
+    if (t.status!=="ok") return {ready:false,macd:"neutral",rsi:"neutral",cmf:"neutral",buy:0,sell:0};
+
+    let macd="neutral";
+    if (Number.isFinite(t.macd) && Number.isFinite(t.signal)) macd=t.macd>t.signal?"buy":t.macd<t.signal?"sell":"neutral";
+
+    let rsi="neutral";
+    if (Number.isFinite(t.rsi)) { if (t.rsi>=52) rsi="buy"; else if (t.rsi<=48) rsi="sell"; }
+
+    let cmf="neutral";
+    if (Number.isFinite(t.cmf)) { if (t.cmf>=0.05) cmf="buy"; else if (t.cmf<=-0.05) cmf="sell"; }
+
+    const sides=[macd,rsi,cmf];
+    return {ready:true,macd,rsi,cmf,buy:sides.filter(x=>x==="buy").length,sell:sides.filter(x=>x==="sell").length};
+  }
+
+  function sideWord(side){ return side==="buy"?"BUY":side==="sell"?"SELL":"NEUTRAL"; }
+
+  function getDecision(){
+    const session=sessionInfo();
+    const macro=macroInfo();
+    const decisionMins=decisionWindowMinutes();
+    const stats=compute(decisionMins);
+    const r=ratioObj(stats);
+    const th=threshold();
+    const tv=technicalVotes();
+    const complete=decisionWindowComplete();
+
+    const flowDirection=r.signed>=th?"buy":r.signed<=-th?"sell":null;
+    const dominantValue=flowDirection==="buy"?stats.buyVol:flowDirection==="sell"?stats.sellVol:(r.signed>=0?stats.buyVol:stats.sellVol);
+    const flowPass=!!flowDirection && dominantValue>=MIN_DOMINANT_VOLUME;
+    const requiredTech=session.openRisk?3:2;
+    const aligned=flowDirection?(flowDirection==="buy"?tv.buy:tv.sell):0;
+
+    let action="NO-GO";
+    let reason="No confirmed "+decisionMins+"-minute setup.";
+
+    if (!session.allowed) {
+      reason=session.detail;
+    } else if (!macro.ready) {
+      reason="Calendar unavailable — check Forex Factory manually.";
+    } else if (macro.blocked) {
+      reason="Macro block: "+macro.detail;
+    } else if (!complete) {
+      reason="Building a complete "+decisionMins+"-minute trade window.";
+    } else if (!flowDirection) {
+      const gap=Math.max(0,th-Math.abs(Number.isFinite(r.signed)?r.signed:0));
+      reason="Aggression has not reached ±"+th.toFixed(2)+" (needs "+gap.toFixed(2)+"x more).";
+    } else if (dominantValue<MIN_DOMINANT_VOLUME) {
+      reason=sideWord(flowDirection)+" aggression confirmed, but dominant value is "+fmtSignalVol(dominantValue)+". Need "+fmtSignalVol(MIN_DOMINANT_VOLUME-dominantValue)+" more.";
+    } else if (!tv.ready) {
+      reason="Order flow confirmed, but "+decisionMins+"m technical data is unavailable.";
+    } else if (aligned<requiredTech) {
+      reason=sideWord(flowDirection)+" order flow confirmed, but only "+aligned+"/3 technicals agree. Need "+requiredTech+"/3.";
+    } else {
+      action=sideWord(flowDirection);
+      reason=sideWord(flowDirection)+" confirmed: order flow + "+aligned+"/3 technicals + macro clear.";
+      const ri=regimeInfo();
+      if (ri.ready && ((flowDirection==="buy"&&ri.bias==="bearish")||(flowDirection==="sell"&&ri.bias==="bullish"))) {
+        reason += " Countertrend to "+ri.label.toLowerCase()+" context.";
+      } else if (ri.ready && ((flowDirection==="buy"&&ri.bias==="bullish")||(flowDirection==="sell"&&ri.bias==="bearish"))) {
+        reason += " Higher-timeframe context agrees.";
+      }
+    }
+
+    return {action,reason,session,macro,stats,r,th,tv,complete,flowDirection,dominantValue,flowPass,requiredTech,aligned,decisionMins};
+  }
+
+  function techClass(side){ return side==="buy"?"techValue techBuy":side==="sell"?"techValue techSell":"techValue techNeutral"; }
+
+  function renderDecision(){
+    const d=getDecision();
+    el.signalHero.className="signalHero "+(d.action==="BUY"?"buySignal":d.action==="SELL"?"sellSignal":"noGoSignal");
+    el.decisionEyebrow.textContent=d.decisionMins+"m scalp signal";
+    el.decisionAction.textContent=d.action;
+    el.decisionReason.textContent=d.reason;
+    el.signalRule.textContent="Primary: ±"+d.th.toFixed(2)+" aggression + dominant value ≥1,000. MACD/RSI/CMF confirm. Macro only vetoes unsafe windows.";
+    const tvSymbol=el.product.value.replace("-USD","")+"USDT";
+    el.crossCheckLink.href="https://www.tradingview.com/symbols/"+tvSymbol+"/technicals/?exchange=BINANCE";
+    el.crossCheckLink.textContent="TradingView "+tvSymbol;
+
+    const flowRatioPass=!!d.flowDirection;
+    const flowVolPass=flowRatioPass && d.dominantValue>=MIN_DOMINANT_VOLUME;
+    el.flowGate.className="gateValue "+(d.flowPass?"pass":"fail");
+    el.flowGate.textContent=d.flowPass?sideWord(d.flowDirection)+" READY":"NO-GO";
+    const dominantSide=d.flowDirection || (d.r.signed>=0?"buy":"sell");
+    const rawDominant=dominantSide==="buy"?d.stats.buyVol:d.stats.sellVol;
+    el.flowGateSub.textContent=d.decisionMins+"m "+d.r.text+" · BUY "+fmtSignalVol(d.stats.buyVol)+" · SELL "+fmtSignalVol(d.stats.sellVol)+(flowRatioPass?" · "+sideWord(dominantSide)+" needs 1,000":"");
+
+    const techReady=d.tv.ready;
+    const techPass=d.flowDirection && techReady && d.aligned>=d.requiredTech;
+    const neutralVotes=techReady?Math.max(0,3-d.tv.buy-d.tv.sell):0;
+    const techLeader=!techReady?"UNAVAILABLE":d.tv.buy>d.tv.sell?"BUY "+d.tv.buy+"/3":d.tv.sell>d.tv.buy?"SELL "+d.tv.sell+"/3":"MIXED";
+    el.techGate.className="gateValue "+(techPass?"pass":techReady?"fail":"block");
+    el.techGate.textContent=d.flowDirection&&techReady?d.aligned+"/3 ALIGN":techLeader;
+    el.techGateSub.textContent=techReady?(d.tv.buy+" buy · "+d.tv.sell+" sell · "+neutralVotes+" neutral · "+(d.session.openRisk?"need 3/3":"need 2/3")):("Loading "+d.decisionMins+"m candles");
+
+    el.macroGate.className="gateValue "+(d.macro.ready&&!d.macro.blocked?"pass":d.macro.blocked?"block":"fail");
+    el.macroGate.textContent=d.macro.label;
+    el.macroGateSub.textContent=d.macro.detail;
+    if (el.macroManualClear) {
+      el.macroManualClear.className="macroAction"+(!d.macro.ready?" show":"");
+    }
+
+    el.sessionGate.className="gateValue "+(d.session.allowed?(d.session.openRisk?"fail":"pass"):"block");
+    el.sessionGate.textContent=d.session.label;
+    el.sessionGateSub.textContent=d.session.detail;
+
+    const t=state.technicals;
+    el.macdTitle.textContent="MACD · "+d.decisionMins+"m";
+    el.rsiTitle.textContent="RSI(14) · "+d.decisionMins+"m";
+    el.cmfTitle.textContent="CMF(20) · "+d.decisionMins+"m";
+    if (t.status==="ok") {
+      el.macdValue.className=techClass(d.tv.macd);
+      el.macdValue.textContent=Number.isFinite(t.macd)?t.macd.toFixed(2)+" / "+t.signal.toFixed(2):"—";
+      const histTrend=Number.isFinite(t.prevHistogram)&&Number.isFinite(t.histogram)?(Math.abs(t.histogram)>Math.abs(t.prevHistogram)?"strengthening":"easing"):"";
+      const histText=Number.isFinite(t.histogram)?"hist "+(t.histogram>=0?"+":"")+t.histogram.toFixed(2):"";
+      el.macdSub.textContent=sideWord(d.tv.macd)+(histText?" · "+histText:"")+(histTrend?" · "+histTrend:"");
+
+      el.rsiValue.className=techClass(d.tv.rsi);
+      el.rsiValue.textContent=Number.isFinite(t.rsi)?t.rsi.toFixed(1):"—";
+      const rsiArrow=Number.isFinite(t.prevRsi)&&Number.isFinite(t.rsi)?(t.rsi>t.prevRsi?"rising":t.rsi<t.prevRsi?"falling":"flat"):"";
+      const rsiDelta=Number.isFinite(t.prevRsi)&&Number.isFinite(t.rsi)?t.rsi-t.prevRsi:NaN;
+      el.rsiSub.textContent=sideWord(d.tv.rsi)+(rsiArrow?" · "+rsiArrow:"")+(Number.isFinite(rsiDelta)?" "+(rsiDelta>=0?"+":"")+rsiDelta.toFixed(1):"")+" · neutral 48–52";
+
+      el.cmfValue.className=techClass(d.tv.cmf);
+      el.cmfValue.textContent=Number.isFinite(t.cmf)?(t.cmf>=0?"+":"")+t.cmf.toFixed(3):"—";
+      const cmfArrow=Number.isFinite(t.prevCmf)&&Number.isFinite(t.cmf)?(t.cmf>t.prevCmf?"rising":t.cmf<t.prevCmf?"falling":"flat"):"";
+      const cmfDelta=Number.isFinite(t.prevCmf)&&Number.isFinite(t.cmf)?t.cmf-t.prevCmf:NaN;
+      el.cmfSub.textContent=sideWord(d.tv.cmf)+(cmfArrow?" · "+cmfArrow:"")+(Number.isFinite(cmfDelta)?" "+(cmfDelta>=0?"+":"")+cmfDelta.toFixed(3):"")+" · confirm ±0.05";
+
+      const neutralCount=Math.max(0,3-d.tv.buy-d.tv.sell);
+      el.technicalSummary.className="techValue "+(d.tv.buy>=2?"techBuy":d.tv.sell>=2?"techSell":"techNeutral");
+      el.technicalSummary.textContent=d.tv.buy+" buy · "+d.tv.sell+" sell · "+neutralCount+" neutral";
+      el.technicalSummarySub.innerHTML="Coinbase "+d.decisionMins+"m · updated "+fmtTime(t.updatedAt)+" · <a id=\"crossCheckLinkInline\" class=\"sourceLink\" href=\""+el.crossCheckLink.href+"\" target=\"_blank\" rel=\"noopener\">TradingView check</a>";
+    } else {
+      el.macdValue.className=el.rsiValue.className=el.cmfValue.className="techValue techWarn";
+      el.macdValue.textContent=el.rsiValue.textContent=el.cmfValue.textContent="—";
+      el.macdSub.textContent=el.rsiSub.textContent=el.cmfSub.textContent=t.status==="error"?"Data unavailable":"Loading "+d.decisionMins+"m candles";
+      el.technicalSummary.className="techValue techWarn";
+      el.technicalSummary.textContent=t.status==="error"?"Unavailable":"Loading";
+      el.technicalSummarySub.innerHTML="Coinbase "+d.decisionMins+"m · <a class=\"sourceLink\" href=\""+el.crossCheckLink.href+"\" target=\"_blank\" rel=\"noopener\">TradingView check</a>";
+    }
+
+  }
+
   function render(){
     prune();
+    renderRegime();
 
     const mins = Number(el.window.value);
     const stats = compute(mins);
@@ -1490,139 +2624,47 @@
     } else if (r.signed === -Infinity) {
       el.sellFill.style.width = "50%";
     }
+
+    renderDecision();
   }
 
   async function sleep(ms){
     return new Promise(r => setTimeout(r, ms));
   }
 
-  async function fetchJson(url, options = {}){
-    const timeoutMs = options.timeoutMs || 12000;
-    const retries = Number.isFinite(options.retries) ? options.retries : 2;
-    const allowProxy = options.allowProxy !== false;
-    let lastErr = null;
-
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-      try {
-        const res = await fetch(url, {cache:"no-store", signal:controller.signal});
-        clearTimeout(timer);
-
-        if (res.status === 429) {
-          const retryAfter = Number(res.headers.get("retry-after"));
-          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-            ? Math.min(5000, retryAfter * 1000)
-            : Math.min(2500, 350 * Math.pow(2, attempt));
-          lastErr = new Error("HTTP 429");
-          if (attempt < retries) {
-            await sleep(waitMs);
-            continue;
-          }
-          throw lastErr;
-        }
-
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return await res.json();
-      } catch (err) {
-        clearTimeout(timer);
-        lastErr = err;
-
-        if (attempt < retries && (err.name === "AbortError" || /HTTP 5\d\d/.test(err.message || ""))) {
-          await sleep(Math.min(1800, 250 * Math.pow(2, attempt)));
-          continue;
-        }
-        break;
-      }
-    }
-
-    // A 429 means Coinbase is asking us to slow down. Do not route that through
-    // a public proxy and accidentally hammer the API from another origin.
-    if (!allowProxy || (lastErr && /HTTP 429/.test(lastErr.message || ""))) {
-      throw lastErr || new Error("Request failed");
-    }
-
-    const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+  async function fetchJson(url){
     try {
-      const res = await fetch(proxied, {cache:"no-store", signal:controller.signal});
-      if (!res.ok) throw new Error("Direct fetch failed (" + (lastErr ? lastErr.message : "unknown") + "), proxy HTTP " + res.status);
+      const res = await fetch(url, {cache:"no-store"});
+      if (!res.ok) throw new Error("HTTP " + res.status);
       return await res.json();
-    } finally {
-      clearTimeout(timer);
+    } catch (directErr) {
+      const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+      const res = await fetch(proxied, {cache:"no-store"});
+      if (!res.ok) throw new Error("Direct fetch failed (" + directErr.message + "), proxy HTTP " + res.status);
+      return await res.json();
     }
-  }
-
-  async function fetchTradePage(url){
-    let lastErr = null;
-
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 12000);
-
-      try {
-        const res = await fetch(url, {cache:"no-store", signal:controller.signal});
-        clearTimeout(timer);
-
-        if (res.status === 429) {
-          const retryAfter = Number(res.headers.get("retry-after"));
-          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-            ? Math.min(5000, retryAfter * 1000)
-            : Math.min(3000, 400 * Math.pow(2, attempt));
-          lastErr = new Error("HTTP 429");
-          await sleep(waitMs);
-          continue;
-        }
-
-        if (!res.ok) throw new Error("HTTP " + res.status);
-
-        const rows = await res.json();
-        return {
-          rows,
-          // Coinbase documents CB-AFTER as the cursor for the next older page.
-          after: res.headers.get("CB-AFTER") || res.headers.get("cb-after") || null
-        };
-      } catch (err) {
-        clearTimeout(timer);
-        lastErr = err;
-        if (attempt < 3) {
-          await sleep(Math.min(2200, 300 * Math.pow(2, attempt)));
-          continue;
-        }
-      }
-    }
-
-    throw lastErr || new Error("Trade history request failed");
   }
 
   async function backfill(seq){
     const product = el.product.value;
-    const cutoff = Date.now() - winMs();
+    const backfillMinutes = Number(el.window.value);
+    const cutoff = Date.now() - backfillMinutes * 60 * 1000;
     let after = null;
     let page = 0;
     let added = 0;
     let complete = false;
-    let lastProgressAt = 0;
-    let lastOldest = Infinity;
-
-    // High-volume periods can contain well over 40,000 trades in 15 minutes.
-    // Keep paging until we actually reach the requested time cutoff.
-    // This is only an emergency guard against a broken/repeating cursor.
-    const emergencyMaxPages = 1000;
+    const maxPages = backfillMinutes <= 15 ? 40 : 90;
 
     state.windowComplete = false;
-    log("Backfilling " + product + " for the last " + el.window.value + "m while live data continues...");
+    log("Backfilling " + product + " for " + backfillMinutes + "m signal window...");
 
-    while (page < emergencyMaxPages) {
+    while (page < maxPages) {
       if (seq !== state.bootSeq) return {cancelled:true};
 
       let url = "https://api.exchange.coinbase.com/products/" + encodeURIComponent(product) + "/trades?limit=1000";
       if (after !== null) url += "&after=" + encodeURIComponent(after);
 
-      const pageResult = await fetchTradePage(url);
-      const rows = pageResult.rows;
+      const rows = await fetchJson(url);
       if (!Array.isArray(rows) || !rows.length) break;
 
       page++;
@@ -1639,39 +2681,17 @@
         }
       }
 
-      const fallbackAfter = rows[rows.length - 1] && rows[rows.length - 1].trade_id;
-      const nextAfter = pageResult.after || fallbackAfter;
-
-      // Make sure pagination is genuinely moving backward in time.
-      if (nextAfter == null || String(nextAfter) === String(after) || oldest >= lastOldest) {
-        break;
-      }
-
-      after = nextAfter;
-      lastOldest = oldest;
+      after = rows[rows.length - 1].trade_id;
+      render();
 
       if (oldest <= cutoff) {
         complete = true;
         break;
       }
-
-      // Show progress without repainting the whole dashboard after every page.
-      const now = performance.now();
-      if (now - lastProgressAt >= 500) {
-        lastProgressAt = now;
-        render();
-        const ageSeconds = Math.max(0, Math.round((Date.now() - oldest) / 1000));
-        log("Live. Backfill checked " + fmtInt(page * 1000) + "+ trades and reached " + ageSeconds + "s ago...");
-        await sleep(0);
-      }
+      await sleep(140);
     }
 
-    return {
-      pages: page,
-      added,
-      capped: page >= emergencyMaxPages && !complete,
-      complete
-    };
+    return {pages:page, added, capped:page >= maxPages && !complete, complete};
   }
 
   async function pollLatest(){
@@ -1691,7 +2711,7 @@
   }
 
   function startPolling(){
-    if (state.pollTimer) return;
+    stopPolling();
     pollLatest();
     state.pollTimer = setInterval(pollLatest, 5000);
   }
@@ -1705,17 +2725,6 @@
 
   function closeWs(){
     state.wsSeq++;
-
-    if (state.reconnectTimer) {
-      clearTimeout(state.reconnectTimer);
-      state.reconnectTimer = null;
-    }
-
-    if (state.wsFallbackTimer) {
-      clearTimeout(state.wsFallbackTimer);
-      state.wsFallbackTimer = null;
-    }
-
     if (state.ws) {
       try { state.ws.close(); } catch(e) {}
       state.ws = null;
@@ -1728,38 +2737,11 @@
     const ws = new WebSocket("wss://ws-feed.exchange.coinbase.com");
     state.ws = ws;
 
-    if (state.reconnectTimer) {
-      clearTimeout(state.reconnectTimer);
-      state.reconnectTimer = null;
-    }
-
-    if (state.wsFallbackTimer) {
-      clearTimeout(state.wsFallbackTimer);
-      state.wsFallbackTimer = null;
-    }
-
     setStatus("wait","Connecting");
-
-    // If the WebSocket cannot open promptly, use REST polling as a temporary fallback.
-    // As soon as the socket opens, polling is stopped so it does not duplicate live work.
-    state.wsFallbackTimer = setTimeout(() => {
-      if (seq !== state.wsSeq) return;
-      if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
-        startPolling();
-        setStatus("wait", "Polling");
-        log("Live stream is slow to connect. Using REST polling until it is available.", "warn");
-      }
-    }, 3500);
+    log("Opening Coinbase live matches stream...");
 
     ws.onopen = () => {
       if (seq !== state.wsSeq) return;
-
-      if (state.wsFallbackTimer) {
-        clearTimeout(state.wsFallbackTimer);
-        state.wsFallbackTimer = null;
-      }
-
-      stopPolling();
       ws.send(JSON.stringify({
         type:"subscribe",
         product_ids:[product],
@@ -1767,7 +2749,7 @@
       }));
       state.reconnectMs = 1200;
       setStatus("live","Live");
-      log("Live stream connected. Historical window is filling in behind it.");
+      log("Live stream connected.");
     };
 
     ws.onmessage = (event) => {
@@ -1789,9 +2771,9 @@
           side: msg.side
         });
         state.liveMessages++;
-        // Do not write to the DOM on every trade. render() already refreshes the UI once/second.
+        log("Live stream receiving trades.");
       } else if (msg.type === "subscriptions") {
-        log("Subscribed to " + product + " matches. Live data is active while history backfills.");
+        log("Subscribed to " + product + " matches. Backfill + live stream active.");
       } else if (msg.type === "error") {
         log("WebSocket error: " + (msg.message || JSON.stringify(msg)), "err");
       }
@@ -1800,28 +2782,14 @@
     ws.onerror = (err) => {
       if (seq !== state.wsSeq) return;
       console.error("WebSocket error", err);
-      startPolling();
-      setStatus("wait", "Polling");
-      log("WebSocket error. Using REST polling while reconnecting...", "warn");
+      log("WebSocket error. Keeping backfilled data and reconnecting...", "warn");
     };
 
     ws.onclose = (e) => {
       if (seq !== state.wsSeq) return;
-
-      if (state.wsFallbackTimer) {
-        clearTimeout(state.wsFallbackTimer);
-        state.wsFallbackTimer = null;
-      }
-
-      startPolling();
-      setStatus("wait","Polling");
-      log("Live stream closed " + e.code + ". Polling temporarily; reconnecting in " + Math.round(state.reconnectMs/1000) + "s...", "warn");
-
-      const delay = state.reconnectMs;
-      state.reconnectTimer = setTimeout(() => {
-        state.reconnectTimer = null;
-        connectWs();
-      }, delay);
+      setStatus("dead","Reconnecting");
+      log("WebSocket closed " + e.code + ". Reconnecting in " + Math.round(state.reconnectMs/1000) + "s...", "warn");
+      setTimeout(connectWs, state.reconnectMs);
       state.reconnectMs = Math.min(15000, Math.round(state.reconnectMs * 1.7));
     };
   }
@@ -1832,6 +2800,7 @@
     state.liveMessages = 0;
     state.restPolls = 0;
     state.atr = { value: NaN, percent: NaN, bars: 0, window: "" };
+    state.technicals = { status:"loading", macd:NaN, signal:NaN, histogram:NaN, prevHistogram:NaN, rsi:NaN, prevRsi:NaN, cmf:NaN, prevCmf:NaN, updatedAt:0 };
     state.lastTradeTs = 0;
     state.lastPrice = NaN;
     state.bootStartedAt = Date.now();
@@ -1846,33 +2815,35 @@
     closeWs();
     stopPolling();
     stopAtrRefresh();
+    stopRegimeRefresh();
+    stopTechnicalRefresh();
     reset();
     render();
-
-    // Live data starts immediately. Historical trades and ATR load in parallel.
-    connectWs();
-    startAtrRefresh();
-    log("Starting live stream and backfilling " + el.product.value + " for the last " + el.window.value + "m...");
+    setStatus("wait","Backfilling");
 
     try {
       const result = await backfill(seq);
       if (result && result.cancelled) return;
 
       state.windowComplete = !!result.complete;
-      render();
 
       if (result.capped) {
-        log("Live data is active. Historical backfill hit the emergency cursor cap, so the selected window may be incomplete.", "warn");
-      } else if (result.complete) {
-        log("Live data is active. Historical " + el.window.value + "m window is complete.");
+        log("Backfill hit the safety page cap. Ratio may be incomplete for this window.", "warn");
       } else {
-        log("Live data is active. Historical backfill ended before the full window was confirmed.", "warn");
+        log("Backfill complete. Starting live stream...");
       }
     } catch (err) {
       console.error(err);
       state.windowComplete = false;
-      log("Historical backfill failed: " + err.message + ". Live data will continue from now forward.", "err");
+      log("Backfill failed: " + err.message + ". Live stream will still build from now forward.", "err");
     }
+
+    startPolling();
+    startAtrRefresh();
+    startTechnicalRefresh();
+    startRegimeRefresh();
+    if (!state.macroTimer) startMacroRefresh();
+    connectWs();
   }
 
   restore();
@@ -1882,10 +2853,18 @@
   el.window.addEventListener("change", boot);
   el.refresh.addEventListener("click", boot);
 
+  if (el.macroManualClear) {
+    el.macroManualClear.addEventListener("click", () => {
+      state.macroManualClearUntil=Date.now()+(30*60*1000);
+      renderDecision();
+      log("Macro manually marked clear for 30 minutes after external calendar check.");
+    });
+  }
+
   el.threshold.addEventListener("input", () => {
     save();
     render();
-    log("Threshold set to ±" + threshold().toFixed(2) + ". Ratio is unchanged; alert/color threshold updated.");
+    log("Signal threshold set to ±" + threshold().toFixed(2) + ". BUY/SELL still also requires dominant value ≥1,000 and technical confirmation.");
   });
 
   el.threshold.addEventListener("change", () => {
