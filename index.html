@@ -173,6 +173,53 @@
     color:#d8d8df;
   }
 
+  .signalBiasRow{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:9px;
+  }
+
+  .signalBias{
+    display:inline-flex;
+    align-items:center;
+    border:1px solid #44444d;
+    border-radius:999px;
+    padding:5px 8px;
+    font-size:10px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    background:#242429;
+    color:#d8d8de;
+  }
+
+  .signalBias.bullish{
+    background:#0f3f2a;
+    border-color:#14764a;
+    color:#6cffad;
+  }
+
+  .signalBias.bearish{
+    background:#481923;
+    border-color:#8b2538;
+    color:#ff8aa0;
+  }
+
+  .signalBias.mixed{
+    background:#3d3112;
+    border-color:#82651e;
+    color:#ffd86a;
+  }
+
+  .signalBiasSub{
+    color:#aaaab3;
+    font-size:10px;
+    line-height:1.25;
+  }
+
   .signalRule{
     margin-top:9px;
     color:var(--muted);
@@ -1020,6 +1067,10 @@
       <div class="signalPrimary">
         <div id="decisionEyebrow" class="signalEyebrow">15m scalp signal</div>
         <div id="decisionAction" class="signalAction">NO-GO</div>
+        <div class="signalBiasRow">
+          <span id="decisionBias" class="signalBias">SETUP BUILDING</span>
+          <span id="decisionBiasSub" class="signalBiasSub">Waiting for technical and swing context</span>
+        </div>
         <div id="decisionReason" class="signalReason">Building the 15-minute decision window...</div>
         <div id="signalRule" class="signalRule">Primary signal: ±1.65 aggression + dominant value ≥1,000. MACD/RSI/CMF confirm. Macro only acts as a safety veto.</div>
       </div>
@@ -1302,6 +1353,8 @@
     signalRule:$("signalRule"),
     crossCheckLink:$("crossCheckLink"),
     decisionAction:$("decisionAction"),
+    decisionBias:$("decisionBias"),
+    decisionBiasSub:$("decisionBiasSub"),
     decisionReason:$("decisionReason"),
     flowGate:$("flowGate"),
     flowGateSub:$("flowGateSub"),
@@ -1410,7 +1463,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.20.3";
+  const BUILD_ID = "2026.11.20.4";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
@@ -2139,10 +2192,11 @@
     if (blockedBy) {
       const d=blockedBy.delta;
       const when=d>=0?"in "+fmtCountdown(d):fmtCountdown(-d)+" ago";
+      const unblockTs=blockedBy.ts+(blockedBy.after*60*1000);
       return {
         ready:true,blocked:true,manual:false,label:"BLOCK",
-        detail:(blockedBy.title||"Major USD event")+" · "+fmtEtTime(new Date(blockedBy.ts))+" · "+when,
-        next:blockedBy,source
+        detail:"Blocked until "+fmtEtTime(new Date(unblockTs))+" · "+(blockedBy.title||"Major USD event")+" at "+fmtEtTime(new Date(blockedBy.ts))+" · "+when,
+        next:blockedBy,unblockTs,source
       };
     }
 
@@ -2343,15 +2397,16 @@
       const snapshot=e.status==="fallback";
       const stale=etfSnapshotAgeDays(e.date)>7;
       const tag=snapshot?(stale?" · STALE SNAPSHOT":" · SNAPSHOT"):"";
+      const sourceUrl=e.sourceUrl||"https://sosovalue.com/developer/data/etf";
+      const sourceName=(e.source||"").toLowerCase().includes("farside")?"Farside":"SoSoValue";
+      const dateLabel=e.date?e.date+" close":"latest completed close";
       el.etf1d.className="regimeCardValue "+(one>0?"bullish":one<0?"bearish":"mixed");
       el.etf1d.textContent=fmtMoneyCompact(one);
       const traded=Number.isFinite(e.valueTraded1d)&&e.valueTraded1d>0?" · traded "+fmtMoneyCompact(e.valueTraded1d):"";
-      el.etf1dSub.textContent="BTC "+fmtMoneyCompact(e.btc1d)+" · ETH "+fmtMoneyCompact(e.eth1d)+(e.date?" · "+e.date:"")+traded+tag;
+      el.etf1dSub.innerHTML="BTC "+fmtMoneyCompact(e.btc1d)+" · ETH "+fmtMoneyCompact(e.eth1d)+" · "+dateLabel+traded+tag+" · <a class=\"regimeSource\" href=\""+sourceUrl+"\" target=\"_blank\" rel=\"noopener\">"+sourceName+" ↗</a>";
       el.etf5d.className="regimeCardValue "+(five>0?"bullish":five<0?"bearish":"mixed");
       el.etf5d.textContent=fmtMoneyCompact(five);
-      const sourceUrl=e.sourceUrl||"https://sosovalue.com/developer/data/etf";
-      const sourceName=(e.source||"").toLowerCase().includes("farside")?"Farside":"SoSoValue";
-      el.etf5dSub.innerHTML="BTC "+fmtMoneyCompact(e.btc5d)+" · ETH "+fmtMoneyCompact(e.eth5d)+tag+" · <a class=\"regimeSource\" href=\""+sourceUrl+"\" target=\"_blank\" rel=\"noopener\">"+sourceName+" ↗</a>";
+      el.etf5dSub.innerHTML="BTC "+fmtMoneyCompact(e.btc5d)+" · ETH "+fmtMoneyCompact(e.eth5d)+" · 5 sessions"+tag+" · <a class=\"regimeSource\" href=\""+sourceUrl+"\" target=\"_blank\" rel=\"noopener\">"+sourceName+" ↗</a>";
     } else {
       el.etf1d.className=el.etf5d.className="regimeCardValue neutral";
       el.etf1d.textContent=el.etf5d.textContent="UNAVAILABLE";
@@ -2378,6 +2433,35 @@
   }
 
   function sideWord(side){ return side==="buy"?"BUY":side==="sell"?"SELL":"NEUTRAL"; }
+
+  function setupBiasInfo(d){
+    const ri=regimeInfo();
+    const techBias=!d.tv.ready?"neutral":d.tv.sell>=2?"bearish":d.tv.buy>=2?"bullish":"neutral";
+    const swingBias=ri.ready?ri.bias:"neutral";
+
+    if (techBias!=="neutral" && swingBias===techBias) {
+      return {
+        bias:techBias,
+        label:techBias==="bearish"?"BEARISH SETUP":"BULLISH SETUP",
+        detail:"Technicals + swing context agree"
+      };
+    }
+
+    if (techBias!=="neutral" && swingBias!=="neutral" && techBias!==swingBias) {
+      return {bias:"mixed",label:"MIXED SETUP",detail:"Technicals and swing context disagree"};
+    }
+
+    const bias=techBias!=="neutral"?techBias:swingBias;
+    if (bias!=="neutral") {
+      return {
+        bias,
+        label:(bias==="bearish"?"BEARISH":"BULLISH")+" LEAN",
+        detail:techBias!=="neutral"?"Technicals lead; swing context not aligned":"Swing context leads; technicals not aligned"
+      };
+    }
+
+    return {bias:"neutral",label:"NEUTRAL SETUP",detail:"No directional alignment yet"};
+  }
 
   function getDecision(){
     const session=sessionInfo();
@@ -2436,6 +2520,18 @@
     el.signalHero.className="signalHero "+(d.action==="BUY"?"buySignal":d.action==="SELL"?"sellSignal":"noGoSignal");
     el.decisionEyebrow.textContent=d.decisionMins+"m scalp signal";
     el.decisionAction.textContent=d.action;
+    const bias=setupBiasInfo(d);
+    el.decisionBias.className="signalBias "+(bias.bias==="bullish"?"bullish":bias.bias==="bearish"?"bearish":bias.bias==="mixed"?"mixed":"");
+    el.decisionBias.textContent=bias.label;
+    let biasDetail=bias.detail;
+    if (d.action==="NO-GO" && !d.flowDirection && bias.bias==="bearish") {
+      biasDetail+=" · waiting for ratio ≤ -"+d.th.toFixed(2);
+    } else if (d.action==="NO-GO" && !d.flowDirection && bias.bias==="bullish") {
+      biasDetail+=" · waiting for ratio ≥ +"+d.th.toFixed(2);
+    } else if (d.action==="NO-GO" && d.flowDirection && d.dominantValue<MIN_DOMINANT_VOLUME) {
+      biasDetail+=" · waiting for "+sideWord(d.flowDirection)+" value ≥1,000";
+    }
+    el.decisionBiasSub.textContent=biasDetail;
     el.decisionReason.textContent=d.reason;
     el.signalRule.textContent="Primary: ±"+d.th.toFixed(2)+" aggression + dominant value ≥1,000. MACD/RSI/CMF confirm. Macro only vetoes unsafe windows.";
     const tvSymbol=el.product.value.replace("-USD","")+"USDT";
@@ -2445,10 +2541,20 @@
     const flowRatioPass=!!d.flowDirection;
     const flowVolPass=flowRatioPass && d.dominantValue>=MIN_DOMINANT_VOLUME;
     el.flowGate.className="gateValue "+(d.flowPass?"pass":"fail");
-    el.flowGate.textContent=d.flowPass?sideWord(d.flowDirection)+" READY":"NO-GO";
     const dominantSide=d.flowDirection || (d.r.signed>=0?"buy":"sell");
     const rawDominant=dominantSide==="buy"?d.stats.buyVol:d.stats.sellVol;
-    el.flowGateSub.textContent=d.decisionMins+"m "+d.r.text+" · BUY "+fmtSignalVol(d.stats.buyVol)+" · SELL "+fmtSignalVol(d.stats.sellVol)+(flowRatioPass?" · "+sideWord(dominantSide)+" needs 1,000":"");
+    if (d.flowPass) {
+      el.flowGate.textContent=sideWord(d.flowDirection)+" READY";
+      el.flowGateSub.textContent="Ratio "+d.r.text+" ✓ · "+sideWord(d.flowDirection)+" "+fmtSignalVol(d.dominantValue)+" ✓";
+    } else if (d.flowDirection) {
+      el.flowGate.textContent="WAIT VOLUME";
+      el.flowGateSub.textContent="Ratio "+d.r.text+" ✓ · "+sideWord(d.flowDirection)+" "+fmtSignalVol(d.dominantValue)+" / 1,000";
+    } else {
+      const target=dominantSide==="buy"?">= +"+d.th.toFixed(2):"<= -"+d.th.toFixed(2);
+      const volReady=rawDominant>=MIN_DOMINANT_VOLUME;
+      el.flowGate.textContent="WAIT "+sideWord(dominantSide);
+      el.flowGateSub.textContent="Need ratio "+target+" · now "+d.r.text+" · "+sideWord(dominantSide)+" "+fmtSignalVol(rawDominant)+(volReady?" ✓":" / 1,000");
+    }
 
     const techReady=d.tv.ready;
     const techPass=d.flowDirection && techReady && d.aligned>=d.requiredTech;
@@ -2459,7 +2565,7 @@
     el.techGateSub.textContent=techReady?(d.tv.buy+" buy · "+d.tv.sell+" sell · "+neutralVotes+" neutral · "+(d.session.openRisk?"need 3/3":"need 2/3")):("Loading "+d.decisionMins+"m candles");
 
     el.macroGate.className="gateValue "+(d.macro.ready&&!d.macro.blocked?"pass":d.macro.blocked?"block":"fail");
-    el.macroGate.textContent=d.macro.label;
+    el.macroGate.textContent=d.macro.blocked&&d.macro.unblockTs?"BLOCK → "+fmtEtTime(new Date(d.macro.unblockTs)):d.macro.label;
     el.macroGateSub.textContent=d.macro.detail;
     if (el.macroManualClear) {
       el.macroManualClear.className="macroAction"+(!d.macro.ready?" show":"");
