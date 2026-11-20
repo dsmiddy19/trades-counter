@@ -1,27 +1,65 @@
 {
-  "generated_at": "2026-11-20T15:45:00Z",
-  "source": "Farside Investors",
-  "source_url": "https://farside.co.uk/btc/",
+  "generated_at": "2026-11-20T16:14:02.908557Z",
+  "source": "SoSoValue API",
+  "source_url": "https://sosovalue.com/developer/data/etf",
   "etf": {
     "date": "2026-11-19",
-    "btc_1d": -582300000,
-    "eth_1d": -131200000,
-    "btc_5d": -1306200000,
-    "eth_5d": -206200000,
+    "btc_1d": -582193660.71,
+    "eth_1d": -131244424.12,
+    "btc_5d": -1306023835.56,
+    "eth_5d": -206123427.5,
+    "btc_value_traded_1d": 3235223266.0,
+    "eth_value_traded_1d": 624596934.4,
+    "total_value_traded_1d": 3859820200.4,
+    "btc_net_assets": 76549156272.32,
+    "eth_net_assets": 9598705421.54,
+    "total_net_assets": 86147861693.87,
+    "btc_cum_net_inflow": 53512537246.53,
+    "eth_cum_net_inflow": 11306782556.14,
     "btc_rows": [
-      {"date":"2026-11-13","net_flow":-185400000},
-      {"date":"2026-11-16","net_flow":7900000},
-      {"date":"2026-11-17","net_flow":-239900000},
-      {"date":"2026-11-18","net_flow":-306500000},
-      {"date":"2026-11-19","net_flow":-582300000}
+      {
+        "date": "2026-11-13",
+        "net_flow": -185450233.4
+      },
+      {
+        "date": "2026-11-16",
+        "net_flow": 7986219.7
+      },
+      {
+        "date": "2026-11-17",
+        "net_flow": -239944866.82
+      },
+      {
+        "date": "2026-11-18",
+        "net_flow": -306421294.34
+      },
+      {
+        "date": "2026-11-19",
+        "net_flow": -582193660.71
+      }
     ],
     "eth_rows": [
-      {"date":"2026-11-13","net_flow":2300000},
-      {"date":"2026-11-16","net_flow":-8400000},
-      {"date":"2026-11-17","net_flow":-29100000},
-      {"date":"2026-11-18","net_flow":-39800000},
-      {"date":"2026-11-19","net_flow":-131200000}
+      {
+        "date": "2026-11-13",
+        "net_flow": 2357023.4
+      },
+      {
+        "date": "2026-11-16",
+        "net_flow": -8312467.22
+      },
+      {
+        "date": "2026-11-17",
+        "net_flow": -29090294.84
+      },
+      {
+        "date": "2026-11-18",
+        "net_flow": -39833264.72
+      },
+      {
+        "date": "2026-11-19",
+        "net_flow": -131244424.12
+      }
     ],
-    "source_url": "https://farside.co.uk/btc/"
+    "source_url": "https://sosovalue.com/developer/data/etf"
   }
 }
