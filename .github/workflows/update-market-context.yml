@@ -35,7 +35,7 @@ jobs:
       - name: Commit market context when changed
         shell: bash
         run: |
-          if git diff --quiet -- market-context.json; then
+          if [ -z "$(git status --porcelain -- market-context.json)" ]; then
             echo "Market context unchanged"
             exit 0
           fi
