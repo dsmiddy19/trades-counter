@@ -910,6 +910,19 @@
     white-space:nowrap;
   }
 
+  .buildHistoryLink{
+    color:#93c5fd;
+    border:1px solid #494953;
+    border-radius:6px;
+    padding:5px 8px;
+    font-size:10px;
+    font-weight:850;
+    text-decoration:none;
+    white-space:nowrap;
+  }
+  .buildHistoryLink:hover{background:#303037;text-decoration:none}
+  .buildHistoryLink:focus-visible{outline:2px solid #93c5fd;outline-offset:3px}
+
   .regimeStrip{
     display:grid;
     grid-template-columns:minmax(190px,.8fr) minmax(0,2.2fr);
@@ -1055,7 +1068,8 @@
     <div class="top">
       <div class="titleRow">
         <h1>Trades Counter</h1>
-        <span id="buildStamp" class="buildStamp">Build 2026.11.20.1</span>
+        <span id="buildStamp" class="buildStamp">Build 2026.11.23.1</span>
+        <a class="buildHistoryLink" href="./history.html" title="View the last five builds and prepare a safe rollback">History · rollback</a>
       </div>
       <div class="topRight">
         <div class="pricePill"><span id="topMarket" class="priceLabel">BTC-USD</span><span id="topPrice" class="priceValue">—</span></div>
@@ -1463,7 +1477,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.20.5";
+  const BUILD_ID = "2026.11.23.1";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
