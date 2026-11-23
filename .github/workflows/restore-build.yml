@@ -1,0 +1,108 @@
+name: Prepare Trades Counter rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_commit:
+        description: "Full commit SHA from the History page (latest five index.html builds only)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: trades-counter-rollback
+  cancel-in-progress: false
+
+jobs:
+  prepare-rollback:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out complete repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Validate target and stage archived HTML
+        id: target
+        shell: bash
+        env:
+          REQUESTED_SHA: ${{ inputs.target_commit }}
+        run: |
+          set -euo pipefail
+          requested="$(printf '%s' "$REQUESTED_SHA" | tr -d '[:space:]')"
+          if [[ ! "$requested" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "::error::Paste the full 40-character commit SHA from History."
+            exit 1
+          fi
+          if ! git cat-file -e "${requested}^{commit}" 2>/dev/null; then
+            echo "::error::That commit does not exist in this repository."
+            exit 1
+          fi
+          resolved="$(git rev-parse "${requested}^{commit}")"
+          allowed="$(git log -n 5 --format='%H' HEAD -- index.html)"
+          if ! printf '%s\n' "$allowed" | grep -Fqx "$resolved"; then
+            echo "::error::Only one of the most recent five index.html builds can be restored."
+            exit 1
+          fi
+          if ! git cat-file -e "${resolved}:index.html" 2>/dev/null; then
+            echo "::error::The selected commit does not contain index.html."
+            exit 1
+          fi
+          git show "${resolved}:index.html" > /tmp/trades-counter-rollback.html
+          grep -q '<html' /tmp/trades-counter-rollback.html || {
+            echo "::error::Archived file does not look like HTML."; exit 1;
+          }
+          echo "sha=$resolved" >> "$GITHUB_OUTPUT"
+          echo "short=${resolved:0:8}" >> "$GITHUB_OUTPUT"
+          echo "Validated archived build $resolved"
+
+      - name: Open reviewable restore pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ steps.target.outputs.sha }}
+          TARGET_SHORT: ${{ steps.target.outputs.short }}
+        run: |
+          set -euo pipefail
+          branch="rollback/review-${GITHUB_RUN_ID}"
+          git switch -c "$branch"
+          cp /tmp/trades-counter-rollback.html index.html
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "This build is already the current site. No rollback needed." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Propose restore of Trades Counter $TARGET_SHORT"
+          git push -u origin "$branch"
+
+          compare_url="https://github.com/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
+          {
+            echo "## Rollback prepared"
+            echo
+            echo "Archived commit: \`$TARGET\`"
+            echo
+            echo "Review the changes before restoring production:"
+            echo
+            echo "$compare_url"
+            echo
+            echo "**Only merging the PR changes the live index.html.**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$branch" \
+              --title "Restore Trades Counter to build $TARGET_SHORT" \
+              --body "Restores only index.html from commit \`$TARGET\`. All data, secrets, calendar and ETF workflows stay on main. Review the diff before merging. Prepared by the rollback workflow."; then
+            echo "Pull request created successfully." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::The branch was created, but GitHub Actions may not be permitted to open pull requests. Use the compare link in the job summary to create one manually."
+          fi
