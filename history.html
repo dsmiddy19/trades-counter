@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0c0c0e">
+<title>Trades Counter · Build history</title>
+<style>
+:root{color-scheme:dark;--bg:#0c0c0e;--panel:#18181b;--line:#36363e;--fg:#ededf2;--muted:#a4a4ae;--blue:#93c5fd;--green:#5cdea1;--amber:#f2c14e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 18px 72px}
+a{color:var(--blue)}
+a:hover{text-decoration:underline}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.breadcrumb{color:var(--muted);font-size:12px;letter-spacing:.04em}
+h1{font-size:30px;line-height:1.1;margin:4px 0 0;letter-spacing:-.04em}
+.back{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 12px;text-decoration:none;font-weight:800}
+.lead{max-width:760px;color:#c7c7cf;font-size:15px;line-height:1.55;margin:20px 0 14px}
+.status{color:var(--muted);font-size:12px;min-height:20px;margin:0 0 16px}
+.status.warn{color:var(--amber)}
+.history{display:grid;gap:10px}
+.item{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:17px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+.item.current{border-color:#216947;background:linear-gradient(120deg,#17231d,#18181b)}
+.item h2{font-size:18px;margin:4px 0 4px;line-height:1.2}
+.item .meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.item .message{margin:4px 0 0;font-size:13px;color:#cccbd4;overflow-wrap:anywhere}
+.pill{color:var(--green);font-size:11px;font-weight:950;letter-spacing:.09em}
+.pill.previous{color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+button,.action{display:inline-flex;align-items:center;justify-content:center;min-height:40px;border-radius:8px;padding:8px 11px;border:1px solid #494953;background:#29292f;color:var(--fg);font:800 12px system-ui;cursor:pointer;text-decoration:none;white-space:nowrap}
+button:hover,.action:hover{background:#34343d;text-decoration:none}
+button.primary{background:#1c4435;border-color:#287955;color:#acf5d0}
+button.primary:hover{background:#275c45}
+button:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.guide{margin-top:18px;padding:20px;background:#141416;border:1px solid var(--line);border-radius:12px}
+.guide h2{margin:0 0 8px;font-size:18px}
+.guide p{margin:8px 0;color:#c8c8d1}
+ol{padding-left:22px}
+li{padding:3px 0}
+code{background:#28282e;border:1px solid #44444b;border-radius:5px;padding:3px 5px;font-size:11px;overflow-wrap:anywhere;word-break:break-all}
+.selectRow{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0}
+.selectRow input{flex:1 1 350px;min-width:0;min-height:42px;border-radius:8px;border:1px solid #494953;background:#202025;color:var(--fg);padding:9px 10px;font:12px ui-monospace,monospace}
+.notice{font-size:12px;color:var(--muted)}
+details{margin-top:18px;border-top:1px solid var(--line);padding-top:14px;color:#c9c9d2}
+details summary{font-weight:850;cursor:pointer}
+.archiveList{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.archiveList a{font-size:12px}
+@media(max-width:620px){.item{grid-template-columns:1fr}.actions{justify-content:flex-start}main{padding:18px 12px 60px}h1{font-size:26px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <div class="breadcrumb">TRADES COUNTER / RECOVERY</div>
+      <h1>Build history</h1>
+    </div>
+    <a class="back" href="./index.html">← Live dashboard</a>
+  </div>
+  <p class="lead">Your last five <strong>actual HTML builds</strong>, not calendar or ETF refresh commits. Every version is preserved in GitHub history. Restoring an older version first creates a <strong>reviewable pull request</strong>, so your current working dashboard is never silently overwritten.</p>
+  <p id="loadStatus" class="status" role="status" aria-live="polite">Loading recent builds from GitHub…</p>
+  <section id="history" class="history" aria-label="Last five build revisions"></section>
+  <section class="guide" id="restoreGuide" aria-labelledby="guideTitle">
+    <h2 id="guideTitle">Prepare a safe rollback</h2>
+    <p id="selectionText">Choose “Prepare restore” on a previous build above. No change will happen to your live dashboard.</p>
+    <div class="selectRow">
+      <input id="targetSha" type="text" aria-label="Target commit SHA" placeholder="Select a build above" spellcheck="false" autocomplete="off" readonly>
+      <button id="copySha" type="button">Copy commit SHA</button>
+      <a class="action" id="openWorkflow" href="https://github.com/dsmiddy19/trades-counter/actions/workflows/restore-build.yml" target="_blank" rel="noopener">Open GitHub rollback workflow</a>
+    </div>
+    <ol>
+      <li>On GitHub, click <strong>Run workflow</strong> and use the <strong>main</strong> branch</li>
+      <li>Paste the full selected commit SHA into <strong>target_commit</strong> and run</li>
+      <li>Open the resulting pull request, review what changed, and click <strong>Merge</strong> if it looks right</li>
+    </ol>
+    <p class="notice">The rollback changes only <code>index.html</code>. Your GitHub API secret, economic calendar, market context, and scheduled updates stay intact. A rollback to a very old UI might not show the History link, but <code>/trades-counter/history.html</code> remains available.</p>
+  </section>
+  <details>
+    <summary>Permanent safety snapshots (made before the rollback feature)</summary>
+    <p class="notice">These exact copies remain in the repository even if you later make more than five builds.</p>
+    <div class="archiveList">
+      <a href="./builds/2026.11.20.5/index.html">2026.11.20.5</a>
+      <a href="./builds/2026.11.20.4/index.html">2026.11.20.4</a>
+      <a href="./builds/2026.11.20.3/index.html">2026.11.20.3</a>
+      <a href="./builds/2026.08.27-v17/index.html">2026.08.27 v17</a>
+      <a href="./builds/2026.08.27-previous/index.html">2026.08.27 previous</a>
+    </div>
+  </details>
+</main>
+<script>
+(() => {
+  "use strict";
+  const repo = "dsmiddy19/trades-counter";
+  const $ = id => document.getElementById(id);
+  const items = $("history");
+  const status = $("loadStatus");
+  const shaInput = $("targetSha");
+  const choice = $("selectionText");
+  const fallback = [
+    {sha:"3eb7b18113949c724040b355eec49788b6d8e4d2",date:"2026-11-20T19:24:09Z",message:"Extend trading session to 4 PM ET",build:"2026.11.20.5"},
+    {sha:"61d4a843cbb49cc2ee7522a95574034cd589049f",date:"2026-11-20T16:17:36Z",message:"Improve decision clarity and macro timing",build:"2026.11.20.4"},
+    {sha:"a418359d88dac14deaec109c280dede62863afd7",date:"2026-11-20T16:12:52Z",message:"Deploy Trades Counter build 2026.11.20.3",build:"2026.11.20.3"},
+    {sha:"dbbafb4a0a870a201e4150259c784022bfba5945",date:"2026-08-27T18:43:46Z",message:"Update index.html",build:"v17 · Aug 27"},
+    {sha:"473944eb449dcc5ce15ab0a265fdd25293526527",date:"2026-08-27T16:48:47Z",message:"Update index.html",build:"Aug 27 previous"}
+  ];
+  const known = new Map(fallback.map(x => [x.sha,x.build]));
+
+  function fmtDate(date) {
+    const parsed = new Date(date);
+    if(!Number.isFinite(parsed.getTime())) return "Date unavailable";
+    return parsed.toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});
+  }
+
+  function node(tag,className,text) {
+    const el=document.createElement(tag);
+    if(className) el.className=className;
+    if(text!=null) el.textContent=text;
+    return el;
+  }
+  function link(text,href) {
+    const a=node("a","action",text);
+    a.href=href;
+    a.target="_blank";
+    a.rel="noopener noreferrer";
+    return a;
+  }
+  function choose(item){
+    shaInput.value=item.sha;
+    choice.textContent="Selected: "+(item.build||"Git revision "+item.sha.slice(0,8))+" · "+fmtDate(item.date)+". Follow the three GitHub steps below to create a restore pull request.";
+    $("restoreGuide").scrollIntoView({behavior:"smooth",block:"nearest"});
+  }
+  function render(rows){
+    items.replaceChildren();
+    for(const [i,item] of rows.entries()){
+      const article=node("article","item"+(i===0?" current":""));
+      const content=node("div");
+      content.appendChild(node("div","pill"+(i===0?"":" previous"),i===0?"LATEST REPO BUILD":"PREVIOUS BUILD "+i));
+      content.appendChild(node("h2","",item.build||("Build "+fmtDate(item.date))));
+      content.appendChild(node("div","meta",fmtDate(item.date)+" ET · "+item.sha.slice(0,10)));
+      content.appendChild(node("p","message",item.message||"HTML update"));
+      const actions=node("div","actions");
+      actions.appendChild(link("View code","https://github.com/"+repo+"/blob/"+item.sha+"/index.html"));
+      if(i>0){
+        actions.appendChild(link("Compare","https://github.com/"+repo+"/compare/"+item.sha+"...main"));
+        const btn=node("button","primary","Prepare restore");
+        btn.type="button";
+        btn.addEventListener("click",()=>choose(item));
+        actions.appendChild(btn);
+      }
+      article.append(content,actions);
+      items.appendChild(article);
+    }
+  }
+
+  $("copySha").addEventListener("click",async () => {
+    const value=shaInput.value.trim();
+    if(!value){choice.textContent="Select a previous build first.";return;}
+    try {
+      await navigator.clipboard.writeText(value);
+      $("copySha").textContent="Copied";
+      setTimeout(()=>$("copySha").textContent="Copy commit SHA",1500);
+    } catch(e) {
+      shaInput.focus();
+      shaInput.select();
+      choice.textContent="Select the highlighted SHA and copy it manually.";
+    }
+  });
+
+  async function load(){
+    try {
+      const response=await fetch("https://api.github.com/repos/"+repo+"/commits?path=index.html&per_page=5",{cache:"no-store",headers:{Accept:"application/vnd.github+json"}});
+      if(!response.ok) throw new Error("GitHub returned "+response.status);
+      const raw=await response.json();
+      if(!Array.isArray(raw)||!raw.length) throw new Error("Empty history");
+      const rows=raw.slice(0,5).map(x=>({
+        sha:String(x.sha||""),
+        date:x.commit?.committer?.date||x.commit?.author?.date||"",
+        message:String(x.commit?.message||"").split("\n")[0],
+        build:known.get(x.sha)||null
+      })).filter(x=>/^[0-9a-f]{40}$/i.test(x.sha));
+      if(!rows.length) throw new Error("History not readable");
+      render(rows);
+      status.className="status";
+      status.textContent="Live GitHub history · latest five index.html revisions · updated on every new build";
+      // Optional display labels read from the immutable version of each HTML file.
+      await Promise.all(rows.filter(x=>!x.build).map(async item=>{
+        try{
+          const result=await fetch("https://raw.githubusercontent.com/"+repo+"/"+item.sha+"/index.html");
+          if(!result.ok) return;
+          const html=await result.text();
+          const found=html.match(/const\s+BUILD_ID\s*=\s*["']([^"']+)["']/);
+          if(found) item.build=found[1];
+        } catch(e) {}
+      }));
+      render(rows);
+    } catch(e) {
+      render(fallback);
+      status.className="status warn";
+      status.textContent="GitHub could not be reached. Showing the last five known safety snapshots. Check GitHub before restoring; current versions may be newer.";
+    }
+  }
+  load();
+})();
+</script>
+</body>
+</html>
