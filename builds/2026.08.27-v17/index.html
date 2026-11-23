@@ -1,0 +1,1902 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Trades Counter v17</title>
+<meta name="app-version" content="17.0" />
+<style>
+  :root{
+    --bg:#0c0c0e;
+    --panel:#18181b;
+    --panel2:#202024;
+    --panel3:#111114;
+    --line:#33333a;
+    --text:#ededf2;
+    --muted:#9b9ba4;
+    --green:#19c979;
+    --greenSoft:#0f5e3a;
+    --red:#ff4f6d;
+    --redSoft:#64202c;
+    --yellow:#f2c14e;
+    --blue:#69a7ff;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    background:#0c0c0e;
+    color:var(--text);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  }
+
+  .wrap{
+    width:min(1180px,calc(100vw - 28px));
+    margin:18px auto;
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 18px 50px #0008;
+  }
+
+  .top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:14px;
+    padding:13px 16px;
+    background:#202024;
+    border-bottom:1px solid var(--line);
+  }
+
+  h1{
+    margin:0;
+    font-size:22px;
+    letter-spacing:.2px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+
+  .versionTag{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:850;
+    letter-spacing:.04em;
+  }
+
+  .topRight{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+
+  .pricePill{
+    display:flex;
+    align-items:baseline;
+    gap:7px;
+    background:#111114;
+    border:1px solid #33333a;
+    border-radius:999px;
+    padding:7px 11px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
+  .pricePill .priceLabel{
+    color:var(--muted);
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .pricePill .priceValue{
+    color:#ededf2;
+    font-size:15px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .status{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:#d8d8de;
+    font-weight:850;
+    white-space:nowrap;
+  }
+
+  .dot{
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    background:#777;
+    box-shadow:0 0 14px #777;
+  }
+
+  .dot.live{background:var(--green);box-shadow:0 0 16px var(--green)}
+  .dot.wait{background:var(--yellow);box-shadow:0 0 16px var(--yellow)}
+  .dot.dead{background:var(--red);box-shadow:0 0 16px var(--red)}
+
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:12px;
+    padding:10px 16px;
+    background:#17171a;
+    border-bottom:1px solid var(--line);
+  }
+
+  label{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    color:#d6d6dc;
+    font-size:13px;
+    font-weight:800;
+  }
+
+  select,input,button{
+    background:#2d2d34;
+    color:#fff;
+    border:1px solid #45454d;
+    border-radius:7px;
+    padding:7px 9px;
+    font-size:13px;
+    outline:none;
+  }
+
+  button{
+    cursor:pointer;
+    font-weight:850;
+  }
+
+  button:hover{background:#393940}
+
+  .main{
+    display:grid;
+    grid-template-columns:minmax(460px,1.1fr) minmax(420px,.9fr);
+    gap:0;
+    min-height:420px;
+  }
+
+  .counter{
+    padding:22px 22px 18px;
+    border-right:1px solid var(--line);
+  }
+
+  .map{
+    padding:22px 22px 18px;
+  }
+
+  .sectionHead{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+  }
+
+  .sectionTitle{
+    color:#d7d7dd;
+    font-size:13px;
+    font-weight:950;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+  }
+
+  .badge{
+    border-radius:999px;
+    padding:7px 11px;
+    font-size:12px;
+    line-height:1;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    background:#29292f;
+    border:1px solid #44444d;
+    color:#d8d8de;
+  }
+
+  .badge.buy{
+    background:#0f3f2a;
+    border-color:#14764a;
+    color:#6cffad;
+  }
+
+  .badge.sell{
+    background:#481923;
+    border-color:#8b2538;
+    color:#ff8aa0;
+  }
+
+  .badge.neutral{
+    background:#29292f;
+    border-color:#44444d;
+    color:#d8d8de;
+  }
+
+  .badge.good{
+    background:#102f22;
+    border-color:#166f48;
+    color:#7dffb8;
+  }
+
+  .badge.warn{
+    background:#3d3112;
+    border-color:#82651e;
+    color:#ffd86a;
+  }
+
+  .headBadges{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .counterGrid{
+    display:grid;
+    grid-template-columns:1fr 1.1fr 1fr;
+    align-items:center;
+    gap:12px;
+    margin-top:10px;
+  }
+
+  .side{
+    background:#111114;
+    border:1px solid #303039;
+    border-radius:10px;
+    padding:16px 13px;
+    min-height:124px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .side.sellBox{text-align:right}
+
+  .sideLabel{
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-weight:950;
+    color:var(--muted);
+  }
+
+  .sideValue{
+    font-size:31px;
+    line-height:1;
+    font-weight:950;
+    margin-top:8px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .sideSub{
+    font-size:15px;
+    color:#d8d8de;
+    margin-top:7px;
+    font-weight:750;
+  }
+
+  .buyText{color:var(--green)}
+  .sellText{color:var(--red)}
+
+  .ratioBox{
+    text-align:center;
+  }
+
+  #ratio{
+    font-size:78px;
+    line-height:.88;
+    font-weight:950;
+    letter-spacing:-2px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .neutralText{color:#f0f0f3}
+  .buy{color:var(--green)}
+  .sell{color:var(--red)}
+
+  #ratioMeta{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:9px;
+    min-height:19px;
+  }
+
+  .bar{
+    height:26px;
+    background:#303034;
+    border-radius:13px;
+    position:relative;
+    overflow:hidden;
+    margin:20px 0 7px;
+    box-shadow:inset 0 0 0 1px #42424a;
+  }
+
+  .center{
+    position:absolute;
+    left:50%;
+    top:0;
+    bottom:0;
+    width:2px;
+    background:#ffffffbd;
+    z-index:3;
+  }
+
+  .fill{
+    position:absolute;
+    top:0;
+    bottom:0;
+    width:0%;
+    transition:width .16s linear;
+  }
+
+  .fill.buy{left:50%;background:linear-gradient(90deg,var(--greenSoft),var(--green))}
+  .fill.sell{right:50%;background:linear-gradient(270deg,var(--redSoft),var(--red))}
+
+  .barLabels{
+    display:flex;
+    justify-content:space-between;
+    color:var(--muted);
+    font-size:11px;
+  }
+
+  .compactInfo{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+    margin-top:18px;
+  }
+
+  .mini{
+    background:#111114;
+    border:1px solid #303039;
+    border-radius:9px;
+    padding:11px;
+  }
+
+  .miniTitle{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .miniValue{
+    margin-top:6px;
+    font-size:16px;
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .levelTable{
+    background:#111114;
+    border:1px solid #303039;
+    border-radius:10px;
+    overflow:hidden;
+  }
+
+  .levelRow{
+    display:grid;
+    grid-template-columns:1.1fr .95fr 1.1fr;
+    gap:10px;
+    padding:10px 12px;
+    border-top:1px solid #26262c;
+    align-items:center;
+  }
+
+  .levelRow:first-child{border-top:0}
+
+  .levelName{
+    font-weight:900;
+    color:#d7d7dc;
+  }
+
+  .levelPrice{
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .levelDelta{
+    text-align:right;
+    color:var(--muted);
+    font-variant-numeric:tabular-nums;
+  }
+
+  .levelDelta.above{color:#8fc2ff}
+  .levelDelta.below{color:#c7c7cc}
+  .levelDelta.at{color:var(--yellow)}
+
+  .vwapRow{
+    background:#19191d;
+  }
+
+  .vwapRow .levelName{
+    color:var(--yellow);
+  }
+
+  .vwapVisual{
+    background:#111114;
+    border:1px solid #303039;
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:12px;
+  }
+
+  .vwapVisualGrid{
+    display:grid;
+    grid-template-columns:94px 1fr;
+    gap:14px;
+    align-items:stretch;
+  }
+
+  .vwapScale{
+    position:relative;
+    height:245px;
+    border-radius:10px;
+    background:linear-gradient(180deg,#1d334a 0%,#17181d 50%,#38202a 100%);
+    border:1px solid #34343b;
+    overflow:hidden;
+  }
+
+  .vwapLine{
+    position:absolute;
+    left:0;
+    right:0;
+    height:1px;
+    background:#ffffff42;
+  }
+
+  .vwapLine.major{
+    height:2px;
+    background:#f2c14e9a;
+  }
+
+  .vwapLineLabel{
+    position:absolute;
+    left:8px;
+    transform:translateY(-50%);
+    color:#dddddf;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    text-shadow:0 1px 2px #000;
+  }
+
+  .currentMarker{
+    position:absolute;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:50px;
+    height:24px;
+    border-radius:999px;
+    background:#ededf2;
+    color:#111114;
+    font-size:11px;
+    line-height:24px;
+    text-align:center;
+    font-weight:950;
+    box-shadow:0 0 18px #ededf28a;
+    z-index:4;
+  }
+
+  .currentMarker.above{
+    background:#69a7ff;
+    color:#07121f;
+    box-shadow:0 0 18px #69a7ff8a;
+  }
+
+  .currentMarker.below{
+    background:#ff4f6d;
+    color:#22070d;
+    box-shadow:0 0 18px #ff4f6d8a;
+  }
+
+  .currentMarker.clampedTop::after,
+  .currentMarker.clampedBottom::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+  }
+
+  .currentMarker.clampedTop::after{
+    top:-7px;
+    border-bottom:7px solid #69a7ff;
+  }
+
+  .currentMarker.clampedBottom::after{
+    bottom:-7px;
+    border-top:7px solid #ff4f6d;
+  }
+
+  .vwapReadout{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    min-width:0;
+  }
+
+  .readoutMain{
+    background:#151519;
+    border:1px solid #303039;
+    border-radius:10px;
+    padding:12px;
+  }
+
+  .readoutTitle{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .readoutValue{
+    margin-top:6px;
+    font-size:24px;
+    font-weight:950;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .readoutSub{
+    margin-top:6px;
+    color:#cfcfd6;
+    font-size:13px;
+    line-height:1.35;
+  }
+
+  .compactLevels{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .compactLevel{
+    background:#151519;
+    border:1px solid #303039;
+    border-radius:8px;
+    padding:9px;
+    min-width:0;
+  }
+
+  .compactLevelTitle{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .compactLevelValue{
+    margin-top:5px;
+    font-size:14px;
+    font-weight:850;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+
+  .bottom{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr 1fr .8fr .8fr .9fr;
+    gap:0;
+    border-top:1px solid var(--line);
+    background:#151517;
+  }
+
+  .bottomCell{
+    padding:10px 12px;
+    border-left:1px solid #2b2b31;
+    min-width:0;
+  }
+
+  .bottomCell:first-child{border-left:0}
+
+  .bottomTitle{
+    color:var(--muted);
+    font-size:10px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+
+  .bottomValue{
+    margin-top:5px;
+    color:#d9d9df;
+    font-size:13px;
+    font-weight:750;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .mobileNote{
+    display:none;
+    border-top:1px solid var(--line);
+    background:#141416;
+    color:#d7d7dc;
+    font-size:13px;
+    line-height:1.35;
+    padding:10px 14px;
+  }
+
+  .mobileNote strong{color:var(--yellow)}
+
+  .log{
+    border-top:1px solid var(--line);
+    background:#111114;
+    color:#aaaab3;
+    font-size:12px;
+    line-height:1.35;
+    padding:9px 12px;
+    min-height:34px;
+  }
+
+  .warn{color:var(--yellow)}
+  .err{color:var(--red)}
+
+  @media(max-width:900px){
+    .wrap{width:100%;margin:0}
+    .card{border-radius:0;border-left:0;border-right:0}
+    .main{grid-template-columns:1fr}
+    .counter{border-right:0;border-bottom:1px solid var(--line)}
+    .counterGrid{grid-template-columns:1fr}
+    .side.sellBox{text-align:left}
+    #ratio{font-size:72px}
+    .compactInfo{grid-template-columns:1fr 1fr}
+    .bottom{grid-template-columns:1fr 1fr}
+  }
+
+  @media(max-width:480px){
+    .top{padding:12px 14px}
+    h1{font-size:20px}
+    .topRight{gap:8px}
+    .pricePill{padding:6px 9px}
+    .pricePill .priceValue{font-size:13px}
+    .controls{display:grid;grid-template-columns:1fr 1fr;padding:10px 14px}
+    .controls label{justify-content:space-between}
+    #refresh{grid-column:1 / -1}
+    .counter,.map{padding:18px 14px}
+    .vwapVisualGrid{grid-template-columns:1fr}
+    .vwapScale{height:210px}
+    .levelRow{grid-template-columns:1fr;gap:4px}
+    .levelPrice,.levelDelta{text-align:left}
+    .bottom{grid-template-columns:1fr}
+    .bottomCell{border-left:0;border-top:1px solid #2b2b31}
+    .bottomCell:first-child{border-top:0}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="top">
+      <h1>Trades Counter <span class="versionTag">v2026.08.27.2</span></h1>
+      <div class="topRight">
+        <div class="pricePill"><span id="topMarket" class="priceLabel">BTC-USD</span><span id="topPrice" class="priceValue">—</span></div>
+        <div class="status"><span id="statusDot" class="dot dead"></span><span id="statusText">Offline</span></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <label>Market
+        <select id="product">
+          <option value="BTC-USD">BTC-USD</option>
+          <option value="ETH-USD">ETH-USD</option>
+          <option value="SOL-USD">SOL-USD</option>
+          <option value="AVAX-USD">AVAX-USD</option>
+        </select>
+      </label>
+      <label>Window
+        <select id="window">
+          <option value="1">1m</option>
+          <option value="5">5m</option>
+          <option value="15" selected>15m</option>
+          <option value="30">30m</option>
+          <option value="60">60m</option>
+        </select>
+      </label>
+      <label>Threshold
+        <input id="threshold" type="text" value="1.8" size="4" inputmode="decimal" autocomplete="off" />
+      </label>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+
+    <div class="main">
+      <div class="counter">
+        <div class="sectionHead">
+          <div class="sectionTitle">Aggression ratio</div>
+          <div class="headBadges">
+            <div id="windowBadge" class="badge warn">Window partial</div>
+            <div id="signalBadge" class="badge neutral">No data</div>
+          </div>
+        </div>
+
+        <div class="counterGrid">
+          <div class="side">
+            <div class="sideLabel">Buy</div>
+            <div id="buyVol" class="sideValue buyText">0.00</div>
+            <div id="buyTrades" class="sideSub">0 trades</div>
+          </div>
+
+          <div class="ratioBox">
+            <div id="ratio" class="neutralText">0.00</div>
+            <div id="ratioMeta">Waiting for backfill</div>
+          </div>
+
+          <div class="side sellBox">
+            <div class="sideLabel">Sell</div>
+            <div id="sellVol" class="sideValue sellText">0.00</div>
+            <div id="sellTrades" class="sideSub">0 trades</div>
+          </div>
+        </div>
+
+        <div class="bar">
+          <div id="sellFill" class="fill sell"></div>
+          <div id="buyFill" class="fill buy"></div>
+          <div class="center"></div>
+        </div>
+        <div class="barLabels"><span>sell</span><span>balanced</span><span>buy</span></div>
+
+        <div class="compactInfo">
+          <div class="mini"><div class="miniTitle">Market</div><div id="marketInfo" class="miniValue">BTC-USD</div></div>
+          <div class="mini"><div class="miniTitle">Window</div><div id="windowInfo" class="miniValue">15m</div></div>
+          <div class="mini"><div class="miniTitle">Threshold</div><div id="thresholdInfo" class="miniValue">±1.80</div></div>
+          <div class="mini"><div class="miniTitle">Ratio basis</div><div id="basisInfo" class="miniValue">Volume</div></div>
+        </div>
+      </div>
+
+      <div class="map">
+        <div class="sectionHead">
+          <div class="sectionTitle">VWAP map</div>
+          <div id="stdPosition" class="badge neutral">—</div>
+        </div>
+
+        <div class="vwapVisual">
+          <div class="vwapVisualGrid">
+            <div class="vwapScale">
+              <div class="vwapLine" style="top:0%"></div>
+              <div class="vwapLineLabel" style="top:0%">+2σ</div>
+
+              <div class="vwapLine" style="top:25%"></div>
+              <div class="vwapLineLabel" style="top:25%">+1σ</div>
+
+              <div class="vwapLine major" style="top:50%"></div>
+              <div class="vwapLineLabel" style="top:50%">VWAP</div>
+
+              <div class="vwapLine" style="top:75%"></div>
+              <div class="vwapLineLabel" style="top:75%">-1σ</div>
+
+              <div class="vwapLine" style="top:100%"></div>
+              <div class="vwapLineLabel" style="top:100%">-2σ</div>
+
+              <div id="currentMarker" class="currentMarker" style="top:50%">now</div>
+            </div>
+
+            <div class="vwapReadout">
+              <div class="readoutMain">
+                <div class="readoutTitle">Current level</div>
+                <div id="stdInfo" class="readoutValue">—</div>
+                <div id="currentLevelText" class="readoutSub">Waiting for VWAP data</div>
+              </div>
+
+              <div class="compactLevels">
+                <div class="compactLevel">
+                  <div class="compactLevelTitle">Latest price</div>
+                  <div id="lastPrice" class="compactLevelValue">—</div>
+                </div>
+                <div class="compactLevel">
+                  <div class="compactLevelTitle">VWAP</div>
+                  <div id="vwap" class="compactLevelValue">—</div>
+                </div>
+                <div class="compactLevel">
+                  <div class="compactLevelTitle">Nearest level</div>
+                  <div id="nearestLevel" class="compactLevelValue">—</div>
+                </div>
+                <div class="compactLevel">
+                  <div class="compactLevelTitle">Distance</div>
+                  <div id="nearestDistance" class="compactLevelValue">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="levelTable">
+          <div class="levelRow">
+            <div class="levelName">STD2 upper</div>
+            <div id="std2Upper" class="levelPrice">—</div>
+            <div id="std2UpperDelta" class="levelDelta">—</div>
+          </div>
+          <div class="levelRow">
+            <div class="levelName">STD1 upper</div>
+            <div id="std1Upper" class="levelPrice">—</div>
+            <div id="std1UpperDelta" class="levelDelta">—</div>
+          </div>
+          <div class="levelRow vwapRow">
+            <div class="levelName">VWAP</div>
+            <div id="vwapLevel" class="levelPrice">—</div>
+            <div id="vwapDelta" class="levelDelta">—</div>
+          </div>
+          <div class="levelRow">
+            <div class="levelName">STD1 lower</div>
+            <div id="std1Lower" class="levelPrice">—</div>
+            <div id="std1LowerDelta" class="levelDelta">—</div>
+          </div>
+          <div class="levelRow">
+            <div class="levelName">STD2 lower</div>
+            <div id="std2Lower" class="levelPrice">—</div>
+            <div id="std2LowerDelta" class="levelDelta">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="bottomCell"><div class="bottomTitle">Source</div><div id="dataSource" class="bottomValue">Coinbase spot</div></div>
+      <div class="bottomCell"><div class="bottomTitle">Window status</div><div id="windowStatus" class="bottomValue">partial</div></div>
+      <div class="bottomCell"><div class="bottomTitle">Last cross</div><div id="lastCross" class="bottomValue">none</div></div>
+      <div class="bottomCell"><div class="bottomTitle">Last trade time</div><div id="lastTrade" class="bottomValue">none</div></div>
+      <div class="bottomCell"><div class="bottomTitle">Trades</div><div id="tradeCount" class="bottomValue">0</div></div>
+      <div class="bottomCell"><div class="bottomTitle">Live</div><div id="liveMessages" class="bottomValue">0</div></div>
+      <div class="bottomCell"><div id="atrLabel" class="bottomTitle">ATR(14) · 15m</div><div id="atrValue" class="bottomValue">—</div></div>
+    </div>
+
+    <div id="mobileNote" class="mobileNote">
+      <strong>Phone note:</strong> iPhone Chrome may not run network calls from a downloaded local file. Use an http/https URL for mobile.
+    </div>
+
+    <div id="log" class="log">Starting...</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const el = {
+    product:$("product"),
+    window:$("window"),
+    threshold:$("threshold"),
+    refresh:$("refresh"),
+    statusDot:$("statusDot"),
+    statusText:$("statusText"),
+    topMarket:$("topMarket"),
+    topPrice:$("topPrice"),
+    signalBadge:$("signalBadge"),
+    windowBadge:$("windowBadge"),
+    buyVol:$("buyVol"),
+    sellVol:$("sellVol"),
+    buyTrades:$("buyTrades"),
+    sellTrades:$("sellTrades"),
+    ratio:$("ratio"),
+    ratioMeta:$("ratioMeta"),
+    buyFill:$("buyFill"),
+    sellFill:$("sellFill"),
+    marketInfo:$("marketInfo"),
+    windowInfo:$("windowInfo"),
+    thresholdInfo:$("thresholdInfo"),
+    basisInfo:$("basisInfo"),
+    lastPrice:$("lastPrice"),
+    vwap:$("vwap"),
+    stdPosition:$("stdPosition"),
+    stdInfo:$("stdInfo"),
+    currentMarker:$("currentMarker"),
+    currentLevelText:$("currentLevelText"),
+    nearestLevel:$("nearestLevel"),
+    nearestDistance:$("nearestDistance"),
+    std2Upper:$("std2Upper"),
+    std2UpperDelta:$("std2UpperDelta"),
+    std1Upper:$("std1Upper"),
+    std1UpperDelta:$("std1UpperDelta"),
+    vwapLevel:$("vwapLevel"),
+    vwapDelta:$("vwapDelta"),
+    std1Lower:$("std1Lower"),
+    std1LowerDelta:$("std1LowerDelta"),
+    std2Lower:$("std2Lower"),
+    std2LowerDelta:$("std2LowerDelta"),
+    dataSource:$("dataSource"),
+    windowStatus:$("windowStatus"),
+    lastCross:$("lastCross"),
+    lastTrade:$("lastTrade"),
+    tradeCount:$("tradeCount"),
+    liveMessages:$("liveMessages"),
+    atrLabel:$("atrLabel"),
+    atrValue:$("atrValue"),
+    mobileNote:$("mobileNote"),
+    log:$("log")
+  };
+
+  const state = {
+    trades: [],
+    ids: new Set(),
+    ws: null,
+    wsSeq: 0,
+    bootSeq: 0,
+    reconnectMs: 1200,
+    reconnectTimer: null,
+    wsFallbackTimer: null,
+    liveMessages: 0,
+    restPolls: 0,
+    pollTimer: null,
+    atrTimer: null,
+    atr: { value: NaN, percent: NaN, bars: 0, window: "" },
+    lastTradeTs: 0,
+    lastPrice: NaN,
+    bootStartedAt: 0,
+    windowComplete: false,
+    previousSignal: "none",
+    lastCrossText: "none"
+  };
+
+  function setStatus(mode, text){
+    el.statusDot.className = "dot " + mode;
+    el.statusText.textContent = text;
+  }
+
+  function log(msg, cls){
+    el.log.className = "log" + (cls ? " " + cls : "");
+    el.log.textContent = msg;
+  }
+
+  function save(){
+    localStorage.setItem("tc.product", el.product.value);
+    localStorage.setItem("tc.window", el.window.value);
+    localStorage.setItem("tc.threshold", el.threshold.value);
+  }
+
+  function restore(){
+    const p = localStorage.getItem("tc.product");
+    const w = localStorage.getItem("tc.window");
+    const t = localStorage.getItem("tc.threshold");
+    if (p && [...el.product.options].some(o => o.value === p)) el.product.value = p;
+    if (w && [...el.window.options].some(o => o.value === w)) el.window.value = w;
+    if (t) el.threshold.value = t;
+  }
+
+  function winMs(){ return Number(el.window.value) * 60 * 1000; }
+
+  function threshold(){
+    const raw = String(el.threshold.value).trim().replace(",", ".");
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 1) return 1.8;
+    return n;
+  }
+
+  function fmtVol(n){
+    if (!Number.isFinite(n)) return "0.00";
+    const a = Math.abs(n);
+    if (a >= 1_000_000) return (n/1_000_000).toFixed(2)+"m";
+    if (a >= 10_000) return (n/1_000).toFixed(1)+"k";
+    if (a >= 1_000) return (n/1_000).toFixed(2)+"k";
+    if (a >= 100) return n.toFixed(1);
+    return n.toFixed(2);
+  }
+
+  function fmtInt(n){ return Math.round(n).toLocaleString(); }
+  function fmtTime(ts){ return ts ? new Date(ts).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "none"; }
+
+  function fmtPrice(n){
+    if (!Number.isFinite(n)) return "—";
+    const a = Math.abs(n);
+    if (a >= 100) return n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    if (a >= 10) return n.toLocaleString(undefined, {minimumFractionDigits:3, maximumFractionDigits:3});
+    return n.toLocaleString(undefined, {minimumFractionDigits:4, maximumFractionDigits:4});
+  }
+
+  function signedPrice(n){
+    if (!Number.isFinite(n)) return "—";
+    const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+    return sign + fmtPrice(Math.abs(n));
+  }
+
+  function signedPct(n){
+    if (!Number.isFinite(n)) return "";
+    const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+    return sign + Math.abs(n).toFixed(2) + "%";
+  }
+
+  function deltaToLevelText(level){
+    if (!Number.isFinite(level) || !Number.isFinite(state.lastPrice)) return "—";
+    const delta = level - state.lastPrice;
+    const pct = state.lastPrice ? (delta / state.lastPrice) * 100 : NaN;
+    return "Δ " + signedPrice(delta) + " (" + signedPct(pct) + ")";
+  }
+
+  function deltaClass(level){
+    if (!Number.isFinite(level) || !Number.isFinite(state.lastPrice)) return "";
+    const delta = level - state.lastPrice;
+    if (Math.abs(delta) < 0.0000001) return "at";
+    return delta > 0 ? "above" : "below";
+  }
+
+  function setLevel(priceEl, deltaEl, level){
+    priceEl.textContent = fmtPrice(level);
+    deltaEl.textContent = deltaToLevelText(level);
+    deltaEl.className = "levelDelta " + deltaClass(level);
+  }
+
+  function nearestStdLevel(bands){
+    if (!Number.isFinite(state.lastPrice) || !Number.isFinite(bands.vwap)) {
+      return {name:"—", level:NaN, distance:NaN};
+    }
+
+    const levels = [
+      {name:"STD2 upper", level:bands.upper2},
+      {name:"STD1 upper", level:bands.upper1},
+      {name:"VWAP", level:bands.vwap},
+      {name:"STD1 lower", level:bands.lower1},
+      {name:"STD2 lower", level:bands.lower2}
+    ].filter(x => Number.isFinite(x.level));
+
+    let best = levels[0] || {name:"—", level:NaN};
+    for (const item of levels) {
+      if (Math.abs(item.level - state.lastPrice) < Math.abs(best.level - state.lastPrice)) {
+        best = item;
+      }
+    }
+
+    return {
+      name: best.name,
+      level: best.level,
+      distance: best.level - state.lastPrice
+    };
+  }
+
+  function levelPhrase(z, nearest){
+    if (!Number.isFinite(z)) return "Waiting for VWAP data";
+
+    const abs = Math.abs(z);
+    const side = z > 0 ? "above" : z < 0 ? "below" : "at";
+
+    if (abs >= 2) {
+      return "Price is " + side + " the 2σ band. Nearest level: " + nearest.name + ".";
+    }
+    if (abs >= 1) {
+      return "Price is between 1σ and 2σ " + side + " VWAP. Nearest level: " + nearest.name + ".";
+    }
+    if (abs >= 0.25) {
+      return "Price is inside STD1, " + side + " VWAP. Nearest level: " + nearest.name + ".";
+    }
+    return "Price is near VWAP. Nearest level: " + nearest.name + ".";
+  }
+
+  function updateCurrentMarker(z){
+    if (!Number.isFinite(z)) {
+      el.currentMarker.style.top = "50%";
+      el.currentMarker.className = "currentMarker";
+      return;
+    }
+
+    const clamped = Math.max(-2.25, Math.min(2.25, z));
+    const topPct = 50 - (clamped / 4) * 100;
+    el.currentMarker.style.top = topPct + "%";
+
+    let cls = "currentMarker";
+    if (z > 0) cls += " above";
+    if (z < 0) cls += " below";
+    if (z > 2) cls += " clampedTop";
+    if (z < -2) cls += " clampedBottom";
+    el.currentMarker.className = cls;
+  }
+
+  function showMobileNoteIfNeeded(){
+    const ua = navigator.userAgent || "";
+    const looksMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+    if (location.protocol === "file:" || looksMobile) {
+      el.mobileNote.style.display = "block";
+    }
+  }
+
+  function makerSideToAggBuy(side){
+    return side === "sell";
+  }
+
+  function addTrade(t){
+    if (!t || !t.id || !Number.isFinite(t.ts) || !Number.isFinite(t.qty)) return;
+    if (state.ids.has(t.id)) return;
+    state.ids.add(t.id);
+    state.trades.push(t);
+    if (t.ts >= state.lastTradeTs) {
+      state.lastTradeTs = t.ts;
+      if (Number.isFinite(t.price)) state.lastPrice = t.price;
+    }
+  }
+
+  function addCoinbaseTrade(row){
+    addTrade({
+      id: el.product.value + ":" + String(row.trade_id),
+      ts: new Date(row.time).getTime(),
+      qty: Number(row.size),
+      buy: makerSideToAggBuy(row.side),
+      count: 1,
+      price: Number(row.price)
+    });
+  }
+
+  function prune(){
+    const cutoff = Date.now() - winMs() - 10000;
+    const before = state.trades.length;
+    state.trades = state.trades.filter(t => t.ts >= cutoff);
+    if (state.trades.length !== before || state.ids.size > state.trades.length * 2 + 2000) {
+      state.ids = new Set(state.trades.map(t => t.id));
+    }
+  }
+
+  function compute(minutes){
+    const cutoff = Date.now() - minutes * 60 * 1000;
+    let buyVol=0, sellVol=0, buyTrades=0, sellTrades=0, entries=0;
+
+    for (const t of state.trades) {
+      if (t.ts < cutoff) continue;
+      entries++;
+      if (t.buy) {
+        buyVol += t.qty;
+        buyTrades += t.count;
+      } else {
+        sellVol += t.qty;
+        sellTrades += t.count;
+      }
+    }
+
+    return {buyVol,sellVol,buyTrades,sellTrades,entries};
+  }
+
+  function computeBands(minutes){
+    const cutoff = Date.now() - minutes * 60 * 1000;
+    let vol = 0;
+    let pv = 0;
+
+    for (const t of state.trades) {
+      if (t.ts < cutoff) continue;
+      if (!Number.isFinite(t.price) || !Number.isFinite(t.qty)) continue;
+      vol += t.qty;
+      pv += t.price * t.qty;
+    }
+
+    if (vol <= 0) {
+      return { vwap: NaN, std: NaN, lower1: NaN, upper1: NaN, lower2: NaN, upper2: NaN };
+    }
+
+    const vwap = pv / vol;
+    let variance = 0;
+
+    for (const t of state.trades) {
+      if (t.ts < cutoff) continue;
+      if (!Number.isFinite(t.price) || !Number.isFinite(t.qty)) continue;
+      const d = t.price - vwap;
+      variance += t.qty * d * d;
+    }
+
+    const std = Math.sqrt(variance / vol);
+    return {
+      vwap,
+      std,
+      lower1: vwap - std,
+      upper1: vwap + std,
+      lower2: vwap - 2 * std,
+      upper2: vwap + 2 * std
+    };
+  }
+
+  function atrWindowSeconds(){
+    const mins = Number(el.window.value);
+    if (mins === 1) return 60;
+    if (mins === 5) return 300;
+    if (mins === 15) return 900;
+    if (mins === 30) return 1800;
+    if (mins === 60) return 3600;
+    return 900;
+  }
+
+  function coinbaseCandleGranularity(seconds){
+    // Coinbase supports 1m, 5m, 15m, 1h, 6h, and 1d candles directly.
+    // For 30m, fetch 15m and combine two candles into each 30m bar.
+    return seconds === 1800 ? 900 : seconds;
+  }
+
+  function candleUrl(product, startMs, endMs, granularity){
+    const url = new URL("https://api.exchange.coinbase.com/products/" + encodeURIComponent(product) + "/candles");
+    url.searchParams.set("start", new Date(startMs).toISOString());
+    url.searchParams.set("end", new Date(endMs).toISOString());
+    url.searchParams.set("granularity", String(granularity));
+    return url.toString();
+  }
+
+  function normalizeCandles(rows){
+    // Coinbase candles: [ time, low, high, open, close, volume ]
+    return rows
+      .map(r => ({
+        ts: Number(r[0]) * 1000,
+        low: Number(r[1]),
+        high: Number(r[2]),
+        open: Number(r[3]),
+        close: Number(r[4]),
+        volume: Number(r[5])
+      }))
+      .filter(b =>
+        Number.isFinite(b.ts) &&
+        Number.isFinite(b.low) &&
+        Number.isFinite(b.high) &&
+        Number.isFinite(b.open) &&
+        Number.isFinite(b.close)
+      )
+      .sort((a,b) => a.ts - b.ts);
+  }
+
+  function aggregateCandles(candles, seconds){
+    const buckets = new Map();
+    const bucketMs = seconds * 1000;
+
+    for (const c of candles) {
+      const bucket = Math.floor(c.ts / bucketMs) * bucketMs;
+      let b = buckets.get(bucket);
+
+      if (!b) {
+        b = {
+          ts: bucket,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          firstTs: c.ts,
+          lastTs: c.ts,
+          volume: c.volume || 0
+        };
+        buckets.set(bucket, b);
+      }
+
+      if (c.high > b.high) b.high = c.high;
+      if (c.low < b.low) b.low = c.low;
+      if (c.ts < b.firstTs) {
+        b.firstTs = c.ts;
+        b.open = c.open;
+      }
+      if (c.ts >= b.lastTs) {
+        b.lastTs = c.ts;
+        b.close = c.close;
+      }
+      b.volume += c.volume || 0;
+    }
+
+    return [...buckets.values()].sort((a,b) => a.ts - b.ts);
+  }
+
+  function calculateAtrFromBars(bars, length){
+    if (!Array.isArray(bars) || bars.length < length + 1) {
+      return { value: NaN, bars: bars ? bars.length : 0 };
+    }
+
+    const recent = bars.slice(-(length + 1));
+    const trueRanges = [];
+
+    for (let i = 1; i < recent.length; i++) {
+      const prevClose = recent[i - 1].close;
+      const b = recent[i];
+
+      const tr = Math.max(
+        b.high - b.low,
+        Math.abs(b.high - prevClose),
+        Math.abs(b.low - prevClose)
+      );
+
+      if (Number.isFinite(tr)) trueRanges.push(tr);
+    }
+
+    if (trueRanges.length < length) {
+      return { value: NaN, bars: recent.length };
+    }
+
+    const value = trueRanges.slice(-length).reduce((sum, x) => sum + x, 0) / length;
+    return { value, bars: trueRanges.length };
+  }
+
+  async function refreshAtr(){
+    const length = 14;
+    const product = el.product.value;
+    const seconds = atrWindowSeconds();
+    const granularity = coinbaseCandleGranularity(seconds);
+
+    // Need 15 bars for ATR(14), plus buffer for partial candles/API gaps.
+    const endMs = Date.now();
+    const startMs = endMs - (seconds * 1000 * 24);
+
+    try {
+      const rows = await fetchJson(candleUrl(product, startMs, endMs, granularity));
+      let bars = normalizeCandles(rows);
+
+      if (seconds === 1800) {
+        bars = aggregateCandles(bars, 1800);
+      }
+
+      const atr = calculateAtrFromBars(bars, length);
+      state.atr = {
+        value: atr.value,
+        percent: Number.isFinite(atr.value) && Number.isFinite(state.lastPrice) && state.lastPrice
+          ? (atr.value / state.lastPrice) * 100
+          : NaN,
+        bars: atr.bars,
+        window: (seconds / 60) + "m"
+      };
+    } catch (err) {
+      console.warn("ATR refresh failed", err);
+      state.atr = { value: NaN, percent: NaN, bars: 0, window: (seconds / 60) + "m" };
+    }
+  }
+
+  function startAtrRefresh(){
+    stopAtrRefresh();
+    refreshAtr();
+    state.atrTimer = setInterval(refreshAtr, 30000);
+  }
+
+  function stopAtrRefresh(){
+    if (state.atrTimer) {
+      clearInterval(state.atrTimer);
+      state.atrTimer = null;
+    }
+  }
+
+  function ratioObj(stats){
+    const b = stats.buyVol;
+    const s = stats.sellVol;
+    if (!b && !s) return {text:"0.00", signed:0, mag:1};
+    if (s === 0) return {text:"+∞", signed:Infinity, mag:Infinity};
+    if (b === 0) return {text:"-∞", signed:-Infinity, mag:Infinity};
+
+    const r = b / s;
+    if (r >= 1) return {text:"+"+r.toFixed(2), signed:r, mag:r};
+    return {text:"-"+(1/r).toFixed(2), signed:-(1/r), mag:1/r};
+  }
+
+  function render(){
+    prune();
+
+    const mins = Number(el.window.value);
+    const stats = compute(mins);
+    const r = ratioObj(stats);
+    const th = threshold();
+
+    el.topMarket.textContent = el.product.value;
+    el.topPrice.textContent = fmtPrice(state.lastPrice);
+    el.marketInfo.textContent = el.product.value;
+    el.windowInfo.textContent = mins + "m";
+    el.thresholdInfo.textContent = "±" + th.toFixed(2);
+    el.atrLabel.textContent = "ATR(14) · " + mins + "m";
+    el.basisInfo.textContent = "Volume";
+    el.dataSource.textContent = "Coinbase spot";
+
+    const naturallyComplete = state.bootStartedAt && (Date.now() - state.bootStartedAt >= winMs());
+    const windowComplete = state.windowComplete || naturallyComplete;
+    el.windowBadge.className = windowComplete ? "badge good" : "badge warn";
+    el.windowBadge.textContent = windowComplete ? "Window complete" : "Window partial";
+    el.windowStatus.textContent = windowComplete ? "complete" : "partial";
+
+    el.buyVol.textContent = fmtVol(stats.buyVol);
+    el.sellVol.textContent = fmtVol(stats.sellVol);
+    el.buyTrades.textContent = fmtInt(stats.buyTrades) + " trades";
+    el.sellTrades.textContent = fmtInt(stats.sellTrades) + " trades";
+    el.tradeCount.textContent = fmtInt(stats.entries);
+    el.lastTrade.textContent = fmtTime(state.lastTradeTs);
+    el.lastCross.textContent = state.lastCrossText;
+    el.liveMessages.textContent = fmtInt(state.liveMessages) + (state.restPolls ? " + " + fmtInt(state.restPolls) + " polls" : "");
+
+    const bands = computeBands(mins);
+    el.lastPrice.textContent = fmtPrice(state.lastPrice);
+    el.vwap.textContent = fmtPrice(bands.vwap);
+    el.atrValue.textContent = Number.isFinite(state.atr.value)
+      ? fmtPrice(state.atr.value) + (Number.isFinite(state.atr.percent) ? " (" + state.atr.percent.toFixed(2) + "%)" : "")
+      : "—";
+
+    if (Number.isFinite(bands.vwap) && Number.isFinite(bands.std) && bands.std > 0 && Number.isFinite(state.lastPrice)) {
+      const z = (state.lastPrice - bands.vwap) / bands.std;
+      const zSign = z > 0 ? "+" : "";
+      const zText = zSign + z.toFixed(2) + "σ";
+      const nearest = nearestStdLevel(bands);
+
+      el.stdPosition.textContent = zText;
+      el.stdInfo.textContent = zText;
+      el.currentLevelText.textContent = levelPhrase(z, nearest);
+      el.nearestLevel.textContent = nearest.name;
+      el.nearestDistance.textContent = signedPrice(nearest.distance);
+      updateCurrentMarker(z);
+    } else {
+      el.stdPosition.textContent = "—";
+      el.stdInfo.textContent = "—";
+      el.currentLevelText.textContent = "Waiting for VWAP data";
+      el.nearestLevel.textContent = "—";
+      el.nearestDistance.textContent = "—";
+      updateCurrentMarker(NaN);
+    }
+
+    setLevel(el.std2Upper, el.std2UpperDelta, bands.upper2);
+    setLevel(el.std1Upper, el.std1UpperDelta, bands.upper1);
+    setLevel(el.vwapLevel, el.vwapDelta, bands.vwap);
+    setLevel(el.std1Lower, el.std1LowerDelta, bands.lower1);
+    setLevel(el.std2Lower, el.std2LowerDelta, bands.lower2);
+
+    let ratioClass = "neutralText";
+    let badgeClass = "badge neutral";
+    let badgeText = "Neutral";
+    let meta = "No trades in selected window";
+    let signalType = "none";
+
+    if (r.signed >= th) {
+      ratioClass = "buy";
+      badgeClass = "badge buy";
+      badgeText = "Buy active";
+      signalType = "buy";
+      meta = "Buy threshold active at +" + th.toFixed(2);
+    } else if (r.signed <= -th) {
+      ratioClass = "sell";
+      badgeClass = "badge sell";
+      badgeText = "Sell active";
+      signalType = "sell";
+      meta = "Sell threshold active at -" + th.toFixed(2);
+    } else if (r.signed !== 0) {
+      const remaining = Math.max(0, th - Math.abs(r.signed));
+      badgeText = "Neutral";
+      signalType = "neutral";
+      meta = "Below threshold by " + remaining.toFixed(2) + "x";
+    } else {
+      badgeText = "No data";
+    }
+
+    if ((signalType === "buy" || signalType === "sell") && state.previousSignal !== signalType) {
+      state.lastCrossText = (signalType === "buy" ? "Buy" : "Sell") + " at " + fmtTime(Date.now());
+    }
+    state.previousSignal = signalType;
+
+    el.ratio.className = ratioClass;
+    el.ratio.textContent = r.text;
+    el.signalBadge.className = badgeClass;
+    el.signalBadge.textContent = badgeText;
+    el.ratioMeta.textContent = meta;
+
+    el.buyFill.style.width = "0%";
+    el.sellFill.style.width = "0%";
+
+    if (r.signed !== 0 && Number.isFinite(r.mag)) {
+      const pct = Math.max(0, Math.min(50, ((r.mag - 1) / (th - 1)) * 50));
+      if (r.signed > 0) el.buyFill.style.width = pct + "%";
+      if (r.signed < 0) el.sellFill.style.width = pct + "%";
+    } else if (r.signed === Infinity) {
+      el.buyFill.style.width = "50%";
+    } else if (r.signed === -Infinity) {
+      el.sellFill.style.width = "50%";
+    }
+  }
+
+  async function sleep(ms){
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  async function fetchJson(url, options = {}){
+    const timeoutMs = options.timeoutMs || 12000;
+    const retries = Number.isFinite(options.retries) ? options.retries : 2;
+    const allowProxy = options.allowProxy !== false;
+    let lastErr = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const res = await fetch(url, {cache:"no-store", signal:controller.signal});
+        clearTimeout(timer);
+
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("retry-after"));
+          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(5000, retryAfter * 1000)
+            : Math.min(2500, 350 * Math.pow(2, attempt));
+          lastErr = new Error("HTTP 429");
+          if (attempt < retries) {
+            await sleep(waitMs);
+            continue;
+          }
+          throw lastErr;
+        }
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return await res.json();
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+
+        if (attempt < retries && (err.name === "AbortError" || /HTTP 5\d\d/.test(err.message || ""))) {
+          await sleep(Math.min(1800, 250 * Math.pow(2, attempt)));
+          continue;
+        }
+        break;
+      }
+    }
+
+    // A 429 means Coinbase is asking us to slow down. Do not route that through
+    // a public proxy and accidentally hammer the API from another origin.
+    if (!allowProxy || (lastErr && /HTTP 429/.test(lastErr.message || ""))) {
+      throw lastErr || new Error("Request failed");
+    }
+
+    const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(proxied, {cache:"no-store", signal:controller.signal});
+      if (!res.ok) throw new Error("Direct fetch failed (" + (lastErr ? lastErr.message : "unknown") + "), proxy HTTP " + res.status);
+      return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function fetchTradePage(url){
+    let lastErr = null;
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+
+      try {
+        const res = await fetch(url, {cache:"no-store", signal:controller.signal});
+        clearTimeout(timer);
+
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("retry-after"));
+          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? Math.min(5000, retryAfter * 1000)
+            : Math.min(3000, 400 * Math.pow(2, attempt));
+          lastErr = new Error("HTTP 429");
+          await sleep(waitMs);
+          continue;
+        }
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        const rows = await res.json();
+        return {
+          rows,
+          // Coinbase documents CB-AFTER as the cursor for the next older page.
+          after: res.headers.get("CB-AFTER") || res.headers.get("cb-after") || null
+        };
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+        if (attempt < 3) {
+          await sleep(Math.min(2200, 300 * Math.pow(2, attempt)));
+          continue;
+        }
+      }
+    }
+
+    throw lastErr || new Error("Trade history request failed");
+  }
+
+  async function backfill(seq){
+    const product = el.product.value;
+    const cutoff = Date.now() - winMs();
+    let after = null;
+    let page = 0;
+    let added = 0;
+    let complete = false;
+    let lastProgressAt = 0;
+    let lastOldest = Infinity;
+
+    // High-volume periods can contain well over 40,000 trades in 15 minutes.
+    // Keep paging until we actually reach the requested time cutoff.
+    // This is only an emergency guard against a broken/repeating cursor.
+    const emergencyMaxPages = 1000;
+
+    state.windowComplete = false;
+    log("Backfilling " + product + " for the last " + el.window.value + "m while live data continues...");
+
+    while (page < emergencyMaxPages) {
+      if (seq !== state.bootSeq) return {cancelled:true};
+
+      let url = "https://api.exchange.coinbase.com/products/" + encodeURIComponent(product) + "/trades?limit=1000";
+      if (after !== null) url += "&after=" + encodeURIComponent(after);
+
+      const pageResult = await fetchTradePage(url);
+      const rows = pageResult.rows;
+      if (!Array.isArray(rows) || !rows.length) break;
+
+      page++;
+
+      let oldest = Infinity;
+      for (const row of rows) {
+        const ts = new Date(row.time).getTime();
+        if (Number.isFinite(ts)) {
+          oldest = Math.min(oldest, ts);
+          if (ts >= cutoff) {
+            addCoinbaseTrade(row);
+            added++;
+          }
+        }
+      }
+
+      const fallbackAfter = rows[rows.length - 1] && rows[rows.length - 1].trade_id;
+      const nextAfter = pageResult.after || fallbackAfter;
+
+      // Make sure pagination is genuinely moving backward in time.
+      if (nextAfter == null || String(nextAfter) === String(after) || oldest >= lastOldest) {
+        break;
+      }
+
+      after = nextAfter;
+      lastOldest = oldest;
+
+      if (oldest <= cutoff) {
+        complete = true;
+        break;
+      }
+
+      // Show progress without repainting the whole dashboard after every page.
+      const now = performance.now();
+      if (now - lastProgressAt >= 500) {
+        lastProgressAt = now;
+        render();
+        const ageSeconds = Math.max(0, Math.round((Date.now() - oldest) / 1000));
+        log("Live. Backfill checked " + fmtInt(page * 1000) + "+ trades and reached " + ageSeconds + "s ago...");
+        await sleep(0);
+      }
+    }
+
+    return {
+      pages: page,
+      added,
+      capped: page >= emergencyMaxPages && !complete,
+      complete
+    };
+  }
+
+  async function pollLatest(){
+    try {
+      const product = el.product.value;
+      const url = "https://api.exchange.coinbase.com/products/" + encodeURIComponent(product) + "/trades?limit=1000";
+      const rows = await fetchJson(url);
+
+      if (Array.isArray(rows)) {
+        for (const row of rows) addCoinbaseTrade(row);
+        state.restPolls++;
+        if (!state.ws || state.ws.readyState !== WebSocket.OPEN) setStatus("wait", "Polling");
+      }
+    } catch (err) {
+      console.warn("REST poll failed", err);
+    }
+  }
+
+  function startPolling(){
+    if (state.pollTimer) return;
+    pollLatest();
+    state.pollTimer = setInterval(pollLatest, 5000);
+  }
+
+  function stopPolling(){
+    if (state.pollTimer) {
+      clearInterval(state.pollTimer);
+      state.pollTimer = null;
+    }
+  }
+
+  function closeWs(){
+    state.wsSeq++;
+
+    if (state.reconnectTimer) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
+
+    if (state.wsFallbackTimer) {
+      clearTimeout(state.wsFallbackTimer);
+      state.wsFallbackTimer = null;
+    }
+
+    if (state.ws) {
+      try { state.ws.close(); } catch(e) {}
+      state.ws = null;
+    }
+  }
+
+  function connectWs(){
+    const product = el.product.value;
+    const seq = ++state.wsSeq;
+    const ws = new WebSocket("wss://ws-feed.exchange.coinbase.com");
+    state.ws = ws;
+
+    if (state.reconnectTimer) {
+      clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
+
+    if (state.wsFallbackTimer) {
+      clearTimeout(state.wsFallbackTimer);
+      state.wsFallbackTimer = null;
+    }
+
+    setStatus("wait","Connecting");
+
+    // If the WebSocket cannot open promptly, use REST polling as a temporary fallback.
+    // As soon as the socket opens, polling is stopped so it does not duplicate live work.
+    state.wsFallbackTimer = setTimeout(() => {
+      if (seq !== state.wsSeq) return;
+      if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+        startPolling();
+        setStatus("wait", "Polling");
+        log("Live stream is slow to connect. Using REST polling until it is available.", "warn");
+      }
+    }, 3500);
+
+    ws.onopen = () => {
+      if (seq !== state.wsSeq) return;
+
+      if (state.wsFallbackTimer) {
+        clearTimeout(state.wsFallbackTimer);
+        state.wsFallbackTimer = null;
+      }
+
+      stopPolling();
+      ws.send(JSON.stringify({
+        type:"subscribe",
+        product_ids:[product],
+        channels:["matches"]
+      }));
+      state.reconnectMs = 1200;
+      setStatus("live","Live");
+      log("Live stream connected. Historical window is filling in behind it.");
+    };
+
+    ws.onmessage = (event) => {
+      if (seq !== state.wsSeq) return;
+
+      let msg;
+      try {
+        msg = JSON.parse(event.data);
+      } catch(e) {
+        return;
+      }
+
+      if (msg.type === "match" && msg.product_id === product) {
+        addCoinbaseTrade({
+          trade_id: msg.trade_id,
+          time: msg.time,
+          size: msg.size,
+          price: msg.price,
+          side: msg.side
+        });
+        state.liveMessages++;
+        // Do not write to the DOM on every trade. render() already refreshes the UI once/second.
+      } else if (msg.type === "subscriptions") {
+        log("Subscribed to " + product + " matches. Live data is active while history backfills.");
+      } else if (msg.type === "error") {
+        log("WebSocket error: " + (msg.message || JSON.stringify(msg)), "err");
+      }
+    };
+
+    ws.onerror = (err) => {
+      if (seq !== state.wsSeq) return;
+      console.error("WebSocket error", err);
+      startPolling();
+      setStatus("wait", "Polling");
+      log("WebSocket error. Using REST polling while reconnecting...", "warn");
+    };
+
+    ws.onclose = (e) => {
+      if (seq !== state.wsSeq) return;
+
+      if (state.wsFallbackTimer) {
+        clearTimeout(state.wsFallbackTimer);
+        state.wsFallbackTimer = null;
+      }
+
+      startPolling();
+      setStatus("wait","Polling");
+      log("Live stream closed " + e.code + ". Polling temporarily; reconnecting in " + Math.round(state.reconnectMs/1000) + "s...", "warn");
+
+      const delay = state.reconnectMs;
+      state.reconnectTimer = setTimeout(() => {
+        state.reconnectTimer = null;
+        connectWs();
+      }, delay);
+      state.reconnectMs = Math.min(15000, Math.round(state.reconnectMs * 1.7));
+    };
+  }
+
+  function reset(){
+    state.trades = [];
+    state.ids = new Set();
+    state.liveMessages = 0;
+    state.restPolls = 0;
+    state.atr = { value: NaN, percent: NaN, bars: 0, window: "" };
+    state.lastTradeTs = 0;
+    state.lastPrice = NaN;
+    state.bootStartedAt = Date.now();
+    state.windowComplete = false;
+    state.previousSignal = "none";
+    state.lastCrossText = "none";
+  }
+
+  async function boot(){
+    const seq = ++state.bootSeq;
+    save();
+    closeWs();
+    stopPolling();
+    stopAtrRefresh();
+    reset();
+    render();
+
+    // Live data starts immediately. Historical trades and ATR load in parallel.
+    connectWs();
+    startAtrRefresh();
+    log("Starting live stream and backfilling " + el.product.value + " for the last " + el.window.value + "m...");
+
+    try {
+      const result = await backfill(seq);
+      if (result && result.cancelled) return;
+
+      state.windowComplete = !!result.complete;
+      render();
+
+      if (result.capped) {
+        log("Live data is active. Historical backfill hit the emergency cursor cap, so the selected window may be incomplete.", "warn");
+      } else if (result.complete) {
+        log("Live data is active. Historical " + el.window.value + "m window is complete.");
+      } else {
+        log("Live data is active. Historical backfill ended before the full window was confirmed.", "warn");
+      }
+    } catch (err) {
+      console.error(err);
+      state.windowComplete = false;
+      log("Historical backfill failed: " + err.message + ". Live data will continue from now forward.", "err");
+    }
+  }
+
+  restore();
+  showMobileNoteIfNeeded();
+
+  el.product.addEventListener("change", boot);
+  el.window.addEventListener("change", boot);
+  el.refresh.addEventListener("click", boot);
+
+  el.threshold.addEventListener("input", () => {
+    save();
+    render();
+    log("Threshold set to ±" + threshold().toFixed(2) + ". Ratio is unchanged; alert/color threshold updated.");
+  });
+
+  el.threshold.addEventListener("change", () => {
+    save();
+    render();
+  });
+
+  setInterval(render, 1000);
+  boot();
+
+})();
+</script>
+</body>
+</html>
