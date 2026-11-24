@@ -1211,7 +1211,7 @@
     <div class="top">
       <div class="titleRow">
         <h1>Trades Counter</h1>
-        <span id="buildStamp" class="buildStamp">Build 2026.11.23.2</span>
+        <span id="buildStamp" class="buildStamp">Build 2026.11.24.1</span>
         <a class="buildHistoryLink" href="./history.html" title="View the last five builds and prepare a safe rollback">History · rollback</a>
       </div>
       <div class="topRight">
@@ -1535,7 +1535,10 @@
         dominant side before an event is logged. The filtered variant additionally requires ≥10 qualifying
         executions. The $1,000 filter is a provisional per-execution USD-notional cutoff,
         <strong>not 1,000 orders</strong> and not a verified TensorCharts setting.
-        Only new, observed crossings are recorded (5m cooldown); missed checkpoints are marked “Not observed.”
+        Only new, observed crossings are recorded (5m cooldown). Pending checkpoints survive page refreshes.
+        A recorded price/VWAP sample near the checkpoint provides the full measurement. If that sample is
+        missing, Coinbase 1-minute candle data may recover an <strong>approximate price only</strong>;
+        VWAP is explicitly unavailable and that estimate is excluded from full follow-through statistics.
         Research data is stored only in this browser, up to 120 events. No predictive accuracy is claimed.
       </p>
     </section>
@@ -1694,7 +1697,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.23.2";
+  const BUILD_ID = "2026.11.24.1";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
@@ -3248,6 +3251,6 @@
 
 })();
 </script>
-<script src="./research/shadow-v1.js" defer></script>
+<script src="./research/shadow-v1.js?v=2026.11.24.1" defer></script>
 </body>
 </html>
