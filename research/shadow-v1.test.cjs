@@ -284,7 +284,7 @@ test("episodes separate opposing directions and changes in threshold, filter, ma
     seededEvent(t+3000,"large","buy",{minUsd:5000}),
     seededEvent(t+4000,"large","buy",{product:"BTC-USD"}),
     seededEvent(t+5000,"large","buy",{windowMinutes:5}),
-    seededEvent(t+15*60000,"large","buy",{suffix:"next_window"})
+    seededEvent(t+15*60000,"large","buy",{suffix:"nextwindow"})
   ];
   const f=setup(JSON.stringify({version:2,filterUsd:1000,events}));
   assert.match(f.nodes.get("shadowSummary").textContent,/7 time-window episodes from 7 crossings/);
