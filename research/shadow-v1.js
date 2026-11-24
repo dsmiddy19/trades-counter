@@ -12,6 +12,7 @@
   const KEY = "tc.shadow.research.v1";
   const CHECKPOINTS = [5, 15, 30];
   const MAX_EVENTS = 120;
+  const RAW_VISIBLE_LIMIT = 24;
   const MIN_FILTERED_EXECUTIONS = 10;
   const CROSSING_COOLDOWN_MS = 5 * 60 * 1000;
   const MAX_CHECKPOINT_DELAY_MS = 120 * 1000;
@@ -50,6 +51,7 @@
   const state = {
     filterUsd: 1000,
     events: [],
+    lastHistoryRenderKey: "",
     samples: [],
     currentScope: "",
     observedEligibility: Object.create(null),
@@ -532,7 +534,10 @@
     if (!el.rawEvents) return;
     el.rawEvents.replaceChildren();
     if (el.rawCount) el.rawCount.textContent =
-      "Raw crossing log (" + state.events.length + ") · original entries preserved";
+      "Raw crossing log (" + state.events.length + ")" +
+      (state.events.length > RAW_VISIBLE_LIMIT ?
+       " · latest " + RAW_VISIBLE_LIMIT + " shown; CSV includes all" :
+       " · original entries preserved");
 
     if (!state.events.length) {
       const tr=dom("tr");
@@ -542,7 +547,7 @@
       el.rawEvents.appendChild(tr);
       return;
     }
-    for (const e of state.events.slice(0,MAX_EVENTS)) {
+    for (const e of state.events.slice(0,RAW_VISIBLE_LIMIT)) {
       const tr=dom("tr");
       const tdTime=dom("td","shadowTime",fmtEtStamp(e.time));
       tdTime.appendChild(dom("small","",e.product+" · "+e.windowMinutes+"m"));
@@ -557,6 +562,17 @@
   }
 
   function renderHistory() {
+    // Rendering 120 x 6 DOM cells every second would slow the live dashboard.
+    // Rebuild only when an event or one of its outcome checkpoints changes.
+    const renderKey = state.events.map(e =>
+      e.id + ":" + CHECKPOINTS.map(m => {
+        const c = e.checkpoints[checkpointKey(m)];
+        return c ? c.status + ":" + (Number.isFinite(c.pricePct)?c.pricePct:"") +
+          ":" + (Number.isFinite(c.vwapPct)?c.vwapPct:"") : "pending";
+      }).join(",")
+    ).join("|");
+    if (renderKey === state.lastHistoryRenderKey) return;
+    state.lastHistoryRenderKey = renderKey;
     const episodes=groupEpisodes(state.events);
     el.events.replaceChildren();
     el.count.textContent = episodes.length + " time-window episodes · "+
