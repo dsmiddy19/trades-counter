@@ -45,7 +45,7 @@ function setup(savedValue) {
 
 function sample(t, opts={}) {
   const buys = opts.tradeBuys ?? 24;
-  const trades=Array.from({length:40},(_,i)=>({
+  const trades=opts.trades??Array.from({length:40},(_,i)=>({
     id:"t"+i,ts:t-500,qty:90,price:2000,buy:i<buys
   }));
   return {
