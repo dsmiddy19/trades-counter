@@ -184,7 +184,30 @@ test("legacy v1 not-observed outcomes recover approximate PRICE ONLY from Coinba
   assert.equal(migrated.checkpoints["15"],undefined,"future event must be pending after v1 migration");
   assert.equal(migrated.checkpoints["30"],undefined);
   assert.ok(fetched.length>=1);
-  assert.match(f.nodes.get("shadowSummary").textContent,/price-only estimate/);
+  assert.match(f.nodes.get("shadowSummary").textContent,/1 pending/); // 15m still in the future
+  assert.doesNotMatch(f.nodes.get("shadowSummary").textContent,/price \+ VWAP follow-through/);
+});
+
+test("a recovered 15m candle price is excluded from full price+VWAP statistics", async () => {
+  const now=Date.now(),time=now-20*60000;
+  const due=time+15*60000;
+  const candleTs=Math.floor(due/60000)*60000;
+  const event={
+    id:time+"-large-sell",runId:"legacy",time,product:"ETH-USD",
+    windowMinutes:15,minUsd:1000,mode:"large",direction:"sell",threshold:1.65,
+    ratio:-1.7,entryPrice:2000,entryVwap:2003,selectedVolume:1300,
+    eligibleExecutions:100,context:{},
+    checkpoints:{"15":{status:"not observed"}}
+  };
+  const fetchMock=async ()=>({ok:true,json:async()=>[[candleTs/1000,1970,2010,2000,1980,123]]});
+  const f=setup(JSON.stringify({version:1,filterUsd:1000,events:[event]}),fetchMock);
+  f.observe(sample(now,{ratio:1.2,tradeBuys:20}));
+  await new Promise(resolve=>setImmediate(resolve));
+  const recovered=f.saved().events[0].checkpoints["15"];
+  assert.equal(recovered.status,"price_estimate");
+  assert.ok(recovered.pricePct>0,"SELL benefits from a falling estimated price");
+  assert.equal(recovered.vwapPct,null);
+  assert.match(f.nodes.get("shadowSummary").textContent,/Filtered: 0 full 15m observations · 1 price-only estimate/);
   assert.doesNotMatch(f.nodes.get("shadowSummary").textContent,/price \+ VWAP follow-through/);
 });
 
