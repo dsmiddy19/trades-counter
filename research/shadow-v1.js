@@ -29,6 +29,8 @@
   const $ = id => document.getElementById(id);
 
   const el = {
+    rawEvents: $("shadowRawEvents"),
+    rawCount: $("shadowRawCount"),
     title: $("shadowTitle"),
     all: $("shadowAllRatio"),
     allMeta: $("shadowAllMeta"),
@@ -455,56 +457,164 @@
     return td;
   }
 
-  function renderHistory() {
-    el.events.replaceChildren();
-    el.count.textContent = String(state.events.length) + " crossings stored locally";
+
+  // A time-window episode is anchored at the FIRST observed qualifying crossing.
+  // Later same-direction crossings inside that same window are descriptive events,
+  // not new independent tests of the same price response.
+  // Group boundaries also require identical market, threshold and filter cohort.
+  function groupEpisodes(events) {
+    const sorted = [...events].filter(e =>
+      e && Number.isFinite(e.time) && e.time > 0 &&
+      ["all","large"].includes(e.mode) &&
+      ["buy","sell"].includes(e.direction) &&
+      Number.isFinite(Number(e.windowMinutes)) && Number(e.windowMinutes) > 0
+    ).sort((a,b) => a.time-b.time ||
+      (a.mode === "large" ? -1 : 1));
+
+    const groups = [];
+    for (const event of sorted) {
+      const minutes = Number(event.windowMinutes);
+      const threshold = Number(event.threshold);
+      const filter = Number(event.minUsd);
+      const last = groups.findLast(g =>
+        g.product === event.product &&
+        g.direction === event.direction &&
+        g.windowMinutes === minutes &&
+        Object.is(g.threshold,threshold) &&
+        Object.is(g.minUsd,filter) &&
+        event.time >= g.startTime &&
+        event.time < g.startTime + minutes*60000
+      );
+      if (last) {
+        last.events.push(event);
+      } else {
+        groups.push({
+          id: [event.product,minutes,threshold,filter,event.direction,event.time].join("|"),
+          product:event.product,direction:event.direction,
+          windowMinutes:minutes,threshold,minUsd:filter,
+          startTime:event.time,anchor:event,events:[event]
+        });
+      }
+    }
+    for (const group of groups) {
+      group.firstAll = group.events.find(e=>e.mode==="all") || null;
+      group.firstLarge = group.events.find(e=>e.mode==="large") || null;
+      group.kind = group.firstAll && group.firstLarge ? "both" :
+        group.firstLarge ? "large_only" : "all_only";
+      group.firstMode = group.anchor.mode;
+      group.secondModeDelaySeconds = group.kind==="both" ?
+        Math.round(Math.abs(group.firstAll.time-group.firstLarge.time)/1000) : null;
+    }
+    return groups.reverse(); // latest episode first
+  }
+
+  function fmtEtStamp(value) {
+    return new Date(value).toLocaleString("en-US",{
+      timeZone:"America/New_York",
+      month:"short",day:"numeric",hour:"numeric",minute:"2-digit"
+    }) + " ET";
+  }
+
+  function episodeKindLabel(kind) {
+    return kind==="both" ? "Both ratios" :
+      kind==="large_only" ? "Filtered only" : "All trades only";
+  }
+
+  function episodeByEvent(episodes) {
+    const result = new Map();
+    for(const group of episodes) {
+      for(const event of group.events) result.set(event.id,group);
+    }
+    return result;
+  }
+
+  function renderRawHistory() {
+    if (!el.rawEvents) return;
+    el.rawEvents.replaceChildren();
+    if (el.rawCount) el.rawCount.textContent =
+      "Raw crossing log (" + state.events.length + ") · original entries preserved";
+
     if (!state.events.length) {
-      const tr = dom("tr");
-      const td = dom("td", "shadowEmpty", "No new threshold crossings recorded yet. Keep this page running with a complete trade window to collect evidence.");
-      td.colSpan = 6;
+      const tr=dom("tr");
+      const td=dom("td","shadowEmpty","No raw threshold crossings recorded yet.");
+      td.colSpan=6;
       tr.appendChild(td);
-      el.events.appendChild(tr);
+      el.rawEvents.appendChild(tr);
       return;
     }
-
-    for (const e of state.events.slice(0, 12)) {
-      const tr = dom("tr");
-      const timestamp = new Date(e.time);
-      const tdTime = dom("td", "shadowTime",
-        timestamp.toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}));
-      tdTime.appendChild(dom("small", "", e.product + " · " + e.windowMinutes + "m"));
-      const tdMode = dom("td", "", (e.mode === "large" ? "Filtered" : "All trades"));
-      tdMode.appendChild(dom("small", "", (e.direction === "buy" ? "BUY" : "SELL") +
-        (e.mode === "large" ? " · " + fmtMoney(e.minUsd) + "/fill" : " · all sizes")));
-      tdMode.classList.add(e.direction === "buy" ? "shadowBuy" : "shadowSell");
-      const tdRatio = dom("td", "shadowNum", fmtRatio(e.ratio));
-      const data = [tdTime, tdMode, tdRatio];
-      for (const m of CHECKPOINTS) data.push(resultCell(e.checkpoints[checkpointKey(m)]));
-      tr.append(...data);
-      el.events.appendChild(tr);
+    for (const e of state.events.slice(0,MAX_EVENTS)) {
+      const tr=dom("tr");
+      const tdTime=dom("td","shadowTime",fmtEtStamp(e.time));
+      tdTime.appendChild(dom("small","",e.product+" · "+e.windowMinutes+"m"));
+      const tdMode=dom("td",e.direction==="buy"?"shadowBuy":"shadowSell",
+        (e.mode==="large"?"Filtered":"All trades"));
+      tdMode.appendChild(dom("small","",e.direction.toUpperCase()+
+        (e.mode==="large"?" · "+fmtMoney(e.minUsd)+"/execution":" · all sizes")));
+      tr.append(tdTime,tdMode,dom("td","shadowNum",fmtRatio(e.ratio)),
+        ...CHECKPOINTS.map(m=>resultCell(e.checkpoints[checkpointKey(m)])));
+      el.rawEvents.appendChild(tr);
     }
   }
 
+  function renderHistory() {
+    const episodes=groupEpisodes(state.events);
+    el.events.replaceChildren();
+    el.count.textContent = episodes.length + " time-window episodes · "+
+      state.events.length + " raw crossings";
+    if (!episodes.length) {
+      const tr=dom("tr");
+      const td=dom("td","shadowEmpty",
+        "No threshold-crossing episodes yet. Keep a complete live window open to collect evidence.");
+      td.colSpan=6;
+      tr.appendChild(td);
+      el.events.appendChild(tr);
+      renderRawHistory();
+      return;
+    }
+    for (const episode of episodes.slice(0,20)) {
+      const first=episode.anchor;
+      const tr=dom("tr");
+      const tdTime=dom("td","shadowTime",fmtEtStamp(episode.startTime));
+      tdTime.appendChild(dom("small","",episode.product+" · "+episode.windowMinutes+"m"));
+      const tdDetection=dom("td",episode.direction==="buy"?"shadowBuy":"shadowSell",
+        episodeKindLabel(episode.kind));
+      const firstLabel=episode.firstMode==="large"?"filtered":"all trades";
+      const paired=episode.kind==="both"?
+        (" · second crossed "+episode.secondModeDelaySeconds+"s later"):"";
+      tdDetection.appendChild(dom("small","",episode.direction.toUpperCase()+
+        " · first: "+firstLabel+paired));
+      tdDetection.appendChild(dom("small","",
+        episode.events.length+" recorded crossing"+
+        (episode.events.length===1?"":"s")+
+        " · filter "+fmtMoney(episode.minUsd)));
+      const ratio=dom("td","shadowNum",fmtRatio(first.ratio));
+      ratio.appendChild(dom("small","","first crossing"));
+      tr.append(tdTime,tdDetection,ratio,
+        ...CHECKPOINTS.map(m=>resultCell(first.checkpoints[checkpointKey(m)])));
+      el.events.appendChild(tr);
+    }
+    renderRawHistory();
+  }
+
   function renderSummary() {
-    const describe = (name,mode) => {
-      const matching = state.events.filter(e => e.mode === mode);
-      const complete = matching.filter(e => e.checkpoints["15"]?.status === "observed");
-      const approximate = matching.filter(e => e.checkpoints["15"]?.status === "price_estimate");
-      const pending = matching.filter(e => !e.checkpoints["15"]);
-      if (!complete.length) {
-        return name + ": 0 full 15m observations" +
-          (approximate.length ? " · " + approximate.length + " price-only estimate(s)" : "") +
-          (pending.length ? " · " + pending.length + " pending" : "");
-      }
-      const follow = complete.filter(e => e.checkpoints["15"].pricePct > 0 &&
-        e.checkpoints["15"].vwapPct > 0).length;
-      const avg = complete.reduce((sum,e) => sum + e.checkpoints["15"].pricePct, 0) / complete.length;
-      return name + ": " + follow + "/" + complete.length +
-        " price + VWAP follow-through · avg directional price " + fmtPercent(avg) +
-        (approximate.length ? " · " + approximate.length + " price-only estimate(s) excluded" : "") +
-        (complete.length < 20 ? " (small sample)" : "");
-    };
-    el.summary.textContent = describe("All","all") + "   |   " + describe("Filtered","large");
+    const episodes=groupEpisodes(state.events);
+    const both=episodes.filter(e=>e.kind==="both").length;
+    const large=episodes.filter(e=>e.kind==="large_only").length;
+    const all=episodes.filter(e=>e.kind==="all_only").length;
+    const full=episodes.filter(e=>e.anchor.checkpoints["15"]?.status==="observed");
+    const price=episodes.filter(e=>["observed","price_estimate"].includes(
+      e.anchor.checkpoints["15"]?.status));
+    const follow=price.filter(e=>e.anchor.checkpoints["15"].pricePct>0).length;
+    const pending=episodes.filter(e=>!e.anchor.checkpoints["15"]).length;
+    const priceNote=price.length ?
+      follow+"/"+price.length+" moved with aggression at 15m (includes 1m price estimates)" :
+      "No measured 15m price responses yet";
+    el.summary.textContent =
+      episodes.length+" time-window episodes from "+state.events.length+
+      " crossings · Both "+both+" · Filtered only "+large+" · All only "+all+
+      "\n15m: "+priceNote+" · "+full.length+" exact price + VWAP outcomes"+
+      (pending ? " · "+pending+" pending" : "")+
+      "\nThe first crossing anchors each episode; later crossings are not counted again. This does not establish independent samples or a trading edge.";
   }
 
   function render(p, filtered, full, fresh) {
@@ -540,13 +650,16 @@
   }
 
   function exportCsv() {
+    const episodes = groupEpisodes(state.events);
+    const eventToEpisode = episodeByEvent(episodes);
     const cols = [
       "time_utc","market","source","direction","window_minutes","min_execution_usd",
       "threshold","ratio","selected_base_volume","eligible_executions","entry_price","entry_vwap",
       "technical_buy_votes","technical_sell_votes","swing_bias","macro_label",
       "price_5m_pct","vwap_5m_pct","status_5m",
       "price_15m_pct","vwap_15m_pct","status_15m",
-      "price_30m_pct","vwap_30m_pct","status_30m"
+      "price_30m_pct","vwap_30m_pct","status_30m",
+      "episode_id","episode_detection","episode_first_crossing","episode_crossings"
     ];
     const rows = [cols];
     for (const e of state.events.slice().reverse()) {
@@ -563,6 +676,11 @@
         row.push(x && x.status === "observed" ? x.vwapPct : "");
         row.push(x ? x.status : "pending");
       }
+      const ep = eventToEpisode.get(e.id);
+      row.push(ep?.id || "");
+      row.push(ep ? episodeKindLabel(ep.kind) : "");
+      row.push(ep && ep.anchor.id === e.id ? "yes" : "no");
+      row.push(ep?.events.length ?? "");
       rows.push(row);
     }
     const csv = rows.map(row => row.map(value => {
