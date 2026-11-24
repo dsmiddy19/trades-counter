@@ -236,7 +236,7 @@ test("a screenshot-like 11 crossings become five first-triggered episodes; varia
     seededEvent(m(10,34),"large"),
     seededEvent(m(12,13),"large"),
     seededEvent(m(12,14),"all"),
-    seededEvent(m(12,20),"large",{direction:"buy",suffix:"extra"}), // duplicate episode
+    seededEvent(m(12,20),"large","buy",{suffix:"extra"}), // duplicate episode
     seededEvent(m(12,51),"all","sell"),
     seededEvent(m(12,53),"large","sell"),
     seededEvent(m(12,58),"large","sell",{suffix:"repeat"}),
