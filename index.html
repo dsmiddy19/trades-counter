@@ -1203,6 +1203,26 @@
     .shadowRatio{font-size:27px}
   }
 
+
+  .shadowRawDetails{
+    margin-top:12px;
+    border:1px solid #34343b;
+    border-radius:9px;
+    overflow:hidden;
+  }
+  .shadowRawDetails summary{
+    cursor:pointer;
+    padding:11px 13px;
+    background:#1d1d21;
+    color:#c5c5d0;
+    font-size:11px;
+    font-weight:800;
+    list-style-position:inside;
+  }
+  .shadowRawDetails[open] summary{border-bottom:1px solid #34343b}
+  .shadowRawDetails .shadowTableWrap{border:0;border-radius:0}
+  .shadowSummary{white-space:pre-line}
+
 </style>
 </head>
 <body>
@@ -1211,7 +1231,7 @@
     <div class="top">
       <div class="titleRow">
         <h1>Trades Counter</h1>
-        <span id="buildStamp" class="buildStamp">Build 2026.11.24.1</span>
+        <span id="buildStamp" class="buildStamp">Build 2026.11.24.2</span>
         <a class="buildHistoryLink" href="./history.html" title="View the last five builds and prepare a safe rollback">History · rollback</a>
       </div>
       <div class="topRight">
@@ -1473,9 +1493,11 @@
           <div class="shadowEyebrow">Shadow study · research only · never changes the scalp signal</div>
           <h2 id="shadowTitle" class="shadowTitle">Does aggression beyond ±1.65 precede a VWAP move?</h2>
           <p class="shadowIntro">
-            Parallel signals on the same Coinbase spot executions and selected rolling window
-            (<span id="shadowWindow">loading</span>). Compare all executions against large executions before
-            testing whether technicals help. Select 15m to study the original observation.
+            Your original aggression-to-VWAP hypothesis, tested in shadow mode on
+            <span id="shadowWindow">the selected market</span>.
+            <strong>All executions includes large executions.</strong> Small trades can dilute the overall
+            buy/sell ratio, so the two ratios may cross the threshold at different times.
+            Select 15m to study your original observation.
           </p>
         </div>
         <div class="shadowActions">
@@ -1509,27 +1531,45 @@
           <div class="shadowCardTitle">Observation status</div>
           <div id="shadowStatus" class="shadowState warning">Loading research module…</div>
           <div class="shadowMeta">
-            New crossings only. This does not override session, macro or technical gates.
+            Crossings are grouped into episodes below. Research never overrides the trading decision.
           </div>
         </div>
       </div>
       <div id="shadowSummary" class="shadowSummary">No 15m outcomes yet. Forward observations accumulate while this page is open.</div>
       <div class="shadowTableHeading">
-        <strong>Observed ratio crossings and forward movement</strong>
-        <span id="shadowEventCount">0 crossings stored locally</span>
+        <strong>Momentum episodes and subsequent price / VWAP movement</strong>
+        <span id="shadowEventCount">0 episodes · 0 raw crossings</span>
       </div>
-      <div class="shadowTableWrap" role="region" aria-label="Research crossing event history" tabindex="0">
+      <div class="shadowTableWrap" role="region" aria-label="Grouped aggression episodes" tabindex="0">
         <table class="shadowTable">
           <thead><tr>
-            <th>Observed at</th><th>Ratio variant</th><th>Ratio</th>
+            <th>First crossing</th><th>Detected by</th><th>First ratio</th>
             <th>After 5m</th><th>After 15m</th><th>After 30m</th>
           </tr></thead>
           <tbody id="shadowEvents">
-            <tr><td class="shadowEmpty" colspan="6">Waiting for new, complete-window observations…</td></tr>
+            <tr><td class="shadowEmpty" colspan="6">Waiting for distinct market episodes…</td></tr>
           </tbody>
         </table>
       </div>
+      <details class="shadowRawDetails">
+        <summary id="shadowRawCount">Raw crossing log (0) · original entries preserved</summary>
+        <div class="shadowTableWrap" role="region" aria-label="Original ungrouped threshold crossings" tabindex="0">
+          <table class="shadowTable">
+            <thead><tr>
+              <th>Observed at</th><th>Ratio variant</th><th>Ratio</th>
+              <th>After 5m</th><th>After 15m</th><th>After 30m</th>
+            </tr></thead>
+            <tbody id="shadowRawEvents"></tbody>
+          </table>
+        </div>
+      </details>
       <p class="shadowNote">
+        Each episode starts with the first qualifying threshold crossing and groups later same-direction
+        crossings during the selected window, for the same market, threshold and filter setting.
+        "Both ratios" means each ratio crossed at some point during that episode, not necessarily simultaneously.
+        Only the <strong>first crossing's</strong> forward price and VWAP movement counts toward the episode outcome.
+        These time-window groups reduce duplicate counts, but do not guarantee statistically independent samples.
+        <strong>All executions always includes every filtered execution.</strong>
         Positive price and VWAP percentages mean movement in the aggression direction (BUY up, SELL down).
         Both ratios use the same rolling window and require ≥1,000 total units of the base asset on the
         dominant side before an event is logged. The filtered variant additionally requires ≥10 qualifying
@@ -1697,7 +1737,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.24.1";
+  const BUILD_ID = "2026.11.24.2";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
@@ -3251,6 +3291,6 @@
 
 })();
 </script>
-<script src="./research/shadow-v1.js?v=2026.11.24.1" defer></script>
+<script src="./research/shadow-v1.js?v=2026.11.24.2" defer></script>
 </body>
 </html>
