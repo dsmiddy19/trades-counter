@@ -1958,8 +1958,10 @@
       else if(!boundary || t.ts>boundary.ts || (t.ts===boundary.ts && t.tradeId>boundary.tradeId)) boundary=t;
     }
     if(boundary) kept.push(boundary);
-    state.trades=kept;
-    state.ids=new Set(kept.map(t=>t.id));
+    if(kept.length!==state.trades.length){
+      state.trades=kept;
+      state.ids=new Set(kept.map(t=>t.id));
+    }
   }
 
   function feedIntegrity(now=Date.now()){
@@ -2235,6 +2237,7 @@
       if(requestSeq!==state.bootSeq) return;
       let bars=normalizeCandles(rows);
       if (seconds===1800) bars=aggregateCandles(bars,1800);
+      if(!bars.length || endMs-bars[bars.length-1].ts>seconds*2000) throw Error("Stale technical candles");
       const closes=bars.map(b=>b.close);
       const macd=calculateMacd(closes);
       const rsi=calculateRsi(closes,14);
@@ -2361,6 +2364,7 @@
         bars = aggregateCandles(bars, 1800);
       }
 
+      if(!bars.length || endMs-bars[bars.length-1].ts>seconds*2000) throw Error("Stale ATR candles");
       const atr = calculateAtrFromBars(bars, length);
       state.atr = {        value: atr.value,
         percent: Number.isFinite(atr.value) && Number.isFinite(state.lastPrice) && state.lastPrice
@@ -2462,7 +2466,7 @@
       return {ready:false,blocked:false,manual:false,label:"CHECKING",detail:"Loading calendar...",next:null,source:""};
     }
 
-    if (state.macro.status!=="ok") {
+    if (state.macro.status!=="ok" || Date.now()-state.macro.updatedAt>MACRO_CACHE_MAX_AGE_MS || !macroRowsLookCurrent(state.macro.events)) {
       if (state.macroManualClearUntil>now) {
         return {
           ready:true,blocked:false,manual:true,label:"MANUAL CLEAR",
@@ -3020,15 +3024,15 @@
       badgeText = "No data";
     }
 
-    if ((signalType === "buy" || signalType === "sell") && state.previousSignal !== signalType) {
+    if (windowComplete && (signalType === "buy" || signalType === "sell") && state.previousSignal !== "none" && state.previousSignal !== signalType) {
       state.lastCrossText = (signalType === "buy" ? "Buy" : "Sell") + " at " + fmtTime(Date.now());
     }
-    state.previousSignal = signalType;
+    state.previousSignal = windowComplete ? signalType : "none";
 
     el.ratio.className = ratioClass;
     el.ratio.textContent = r.text;
-    el.signalBadge.className = badgeClass;
-    el.signalBadge.textContent = badgeText;
+    el.signalBadge.className = windowComplete ? badgeClass : "badge warn";
+    el.signalBadge.textContent = windowComplete ? badgeText : "Unverified";
     el.ratioMeta.textContent = meta;
 
     el.buyFill.style.width = "0%";
@@ -3087,12 +3091,12 @@
 
   async function fetchJson(url){
     try {
-      const res = await fetch(url, {cache:"no-store"});
+      const res = await fetch(url, {cache:"no-store",signal:AbortSignal.timeout(10000)});
       if (!res.ok) throw new Error("HTTP " + res.status);
       return await res.json();
     } catch (directErr) {
       const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-      const res = await fetch(proxied, {cache:"no-store"});
+      const res = await fetch(proxied, {cache:"no-store",signal:AbortSignal.timeout(10000)});
       if (!res.ok) throw new Error("Direct fetch failed (" + directErr.message + "), proxy HTTP " + res.status);
       return await res.json();
     }
@@ -3241,7 +3245,7 @@
           side: msg.side
         },product);
         state.liveMessages++;
-        log("Live stream receiving trades.");
+        if(state.liveMessages===1) log("Live stream receiving trades.");
       } else if (msg.type === "subscriptions") {
         log("Subscribed to " + product + " matches. Backfill + live stream active.");
       } else if (msg.type === "error") {
@@ -3302,8 +3306,8 @@
 
       state.windowComplete = !!result.complete;
 
-      if (result.capped) {
-        log("Backfill hit the safety page cap. Ratio may be incomplete for this window.", "warn");
+      if (result.capped || !result.complete) {
+        log("Backfill incomplete. Signal stays blocked until rolling history is verified.", "warn");
       } else {
         log("Backfill complete. Starting live stream...");
       }
