@@ -33,3 +33,12 @@ jobs:
           node -e "const fs=require('fs');const h=fs.readFileSync('index.html','utf8');const s=h.match(/<script>\s*([\s\S]*?)<\/script>/);if(!s)throw Error('Main script missing');new Function(s[1]);if(!h.includes('research/shadow-v1.js'))throw Error('Shadow module not linked');"
       - name: Test shadow capture and outcomes
         run: node --test research/shadow-v1.test.cjs
+
+      - name: Install Chromium browser tests
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.51.1
+          npx playwright install --with-deps chromium
+      - name: Run end-to-end browser scenarios
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/trades-counter-test-server.log 2>&1 &
+          npx playwright test research/browser-e2e.spec.cjs --workers=1 --reporter=line
