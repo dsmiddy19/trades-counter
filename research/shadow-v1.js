@@ -19,6 +19,7 @@
   const $ = id => document.getElementById(id);
 
   const el = {
+    title: $("shadowTitle"),
     all: $("shadowAllRatio"),
     allMeta: $("shadowAllMeta"),
     filtered: $("shadowFilteredRatio"),
@@ -337,7 +338,8 @@
       const follow = rows.filter(e => e.checkpoints["15"].pricePct > 0 && e.checkpoints["15"].vwapPct > 0).length;
       const avg = rows.reduce((v,e) => v + e.checkpoints["15"].pricePct, 0) / rows.length;
       return name + ": " + follow + "/" + rows.length +
-        " price + VWAP follow-through · avg directional price " + fmtPercent(avg);
+        " price + VWAP follow-through · avg directional price " + fmtPercent(avg) +
+        (rows.length < 20 ? " (small sample)" : "");
     };
     el.summary.textContent = describe("All", all) + "   |   " + describe("Filtered", large);
   }
@@ -349,6 +351,7 @@
     const filteredSideVol = filtered.ratio >= 0 ? filtered.buy : filtered.sell;
     const filteredReady = filtered.eligible >= MIN_FILTERED_EXECUTIONS && filtered.buy > 0 && filtered.sell > 0;
 
+    el.title.textContent = "Does aggression beyond ±" + p.threshold.toFixed(2) + " precede a VWAP move?";
     el.window.textContent = p.windowMinutes + "m · " + p.product;
     el.filteredTitle.textContent = "Executions ≥ " + fmtMoney(state.filterUsd);
     labelRatio(el.all, allRatio, true);
