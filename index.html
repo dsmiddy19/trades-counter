@@ -1060,6 +1060,149 @@
     .techCell:first-child{border-top:0}    .bottomCell{border-left:0;border-top:1px solid #2b2b31}
     .bottomCell:first-child{border-top:0}
   }
+
+  /* Passive research panel: deliberately separate from live trading gates */
+  .shadowResearch{
+    padding:17px 16px 19px;
+    border-top:1px solid var(--line);
+    background:#111114;
+  }
+  .shadowHeader{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:18px;
+    flex-wrap:wrap;
+    margin-bottom:13px;
+  }
+  .shadowEyebrow{
+    color:#b9b5ec;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    font-size:10px;
+    font-weight:950;
+  }
+  .shadowTitle{
+    margin:5px 0 4px;
+    color:#f2f2f7;
+    font-size:17px;
+    font-weight:950;
+    letter-spacing:-.2px;
+  }
+  .shadowIntro{
+    max-width:740px;
+    margin:0;
+    color:#aaaab6;
+    font-size:11px;
+    line-height:1.5;
+  }
+  .shadowActions{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+  .shadowActions label{
+    display:flex;
+    align-items:flex-start;
+    flex-direction:column;
+    gap:4px;
+    font-size:10px;
+    color:#b5b5bf;
+  }
+  .shadowActions select{padding:7px 9px;font-size:12px;min-height:36px}
+  .shadowActions button{min-height:36px;font-size:11px;padding:7px 10px}
+  .shadowGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .shadowCard{
+    background:#19191d;
+    border:1px solid #34343b;
+    border-radius:9px;
+    padding:12px 13px;
+    min-width:0;
+  }
+  .shadowCardTitle{
+    color:#aaaab5;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.09em;
+    font-weight:950;
+  }
+  .shadowRatio{
+    margin:5px 0 4px;
+    color:#f0f0f5;
+    font-size:31px;
+    font-variant-numeric:tabular-nums;
+    font-weight:950;
+    line-height:1.1;
+  }
+  .shadowRatio.bull{color:var(--green)}
+  .shadowRatio.bear{color:var(--red)}
+  .shadowMeta{
+    color:#a7a7b0;
+    font-size:11px;
+    line-height:1.4;
+    min-height:31px;
+  }
+  .shadowState{
+    margin:9px 0 7px;
+    color:#dedee5;
+    font-size:12px;
+    font-weight:850;
+    line-height:1.4;
+  }
+  .shadowState.ready{color:#75ffb3}
+  .shadowState.warning{color:#ffd86a}
+  .shadowSummary{
+    background:#15151a;
+    color:#bcbcc7;
+    border:1px solid #303039;
+    border-radius:8px;
+    margin:11px 0 15px;
+    padding:10px 12px;
+    font-size:11px;
+    line-height:1.5;
+  }
+  .shadowTableHeading{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:8px;
+    flex-wrap:wrap;
+  }
+  .shadowTableHeading strong{color:#dadae1;font-size:12px}
+  .shadowTableHeading span{color:#9999a5;font-size:11px}
+  .shadowTableWrap{
+    width:100%;
+    overflow-x:auto;
+    border:1px solid #34343b;
+    border-radius:9px;
+  }
+  .shadowTable{border-collapse:collapse;width:100%;min-width:760px;font-size:11px;text-align:left}
+  .shadowTable thead th{
+    background:#242429;color:#bcbcc7;font-size:10px;font-weight:950;
+    text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;
+    padding:9px 11px;
+  }
+  .shadowTable tbody td{padding:10px 11px;border-top:1px solid #303038;vertical-align:top}
+  .shadowTable tbody tr:nth-child(2n){background:#18181b}
+  .shadowTable td small{display:block;color:#9b9ba6;margin-top:4px;font-size:10px}
+  .shadowTable .shadowNum{font-weight:950;font-variant-numeric:tabular-nums}
+  .shadowTable .shadowBuy{color:#73ffae}
+  .shadowTable .shadowSell{color:#ff8297}
+  .shadowTable .shadowResult{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .shadowTable .shadowResult div+div{margin-top:3px}
+  .shadowTable .positive{color:#79dfae}
+  .shadowTable .negative{color:#ff8297}
+  .shadowTable .pending,.shadowTable .shadowEmpty{color:#9999a5}
+  .shadowNote{color:#9696a2;font-size:10px;line-height:1.55;margin:10px 0 0}
+  @media(max-width:900px){
+    .shadowGrid{grid-template-columns:1fr 1fr}
+    .shadowCard:last-child{grid-column:1/-1}
+  }
+  @media(max-width:520px){
+    .shadowResearch{padding:15px 14px 18px}
+    .shadowGrid{grid-template-columns:1fr}
+    .shadowCard:last-child{grid-column:auto}
+    .shadowActions{width:100%}
+    .shadowRatio{font-size:27px}
+  }
+
 </style>
 </head>
 <body>
@@ -1068,7 +1211,7 @@
     <div class="top">
       <div class="titleRow">
         <h1>Trades Counter</h1>
-        <span id="buildStamp" class="buildStamp">Build 2026.11.23.1</span>
+        <span id="buildStamp" class="buildStamp">Build 2026.11.23.2</span>
         <a class="buildHistoryLink" href="./history.html" title="View the last five builds and prepare a safe rollback">History · rollback</a>
       </div>
       <div class="topRight">
@@ -1323,6 +1466,80 @@
       </div>
     </div>
 
+
+    <section id="shadowResearch" class="shadowResearch" aria-labelledby="shadowTitle">
+      <div class="shadowHeader">
+        <div>
+          <div class="shadowEyebrow">Shadow study · research only · never changes the scalp signal</div>
+          <h2 id="shadowTitle" class="shadowTitle">Does aggression beyond ±1.65 precede a VWAP move?</h2>
+          <p class="shadowIntro">
+            Parallel signals on the same Coinbase spot executions and selected rolling window
+            (<span id="shadowWindow">loading</span>). Compare all executions against large executions before
+            testing whether technicals help. Select 15m to study the original observation.
+          </p>
+        </div>
+        <div class="shadowActions">
+          <label for="shadowMinUsd">
+            Minimum size per execution (USD)
+            <select id="shadowMinUsd">
+              <option value="500">$500</option>
+              <option value="1000" selected>$1,000</option>
+              <option value="2500">$2,500</option>
+              <option value="5000">$5,000</option>
+              <option value="10000">$10,000</option>
+              <option value="25000">$25,000</option>
+            </select>
+          </label>
+          <button id="shadowExport" type="button">Export CSV</button>
+          <button id="shadowClear" type="button" title="Clear saved research events after confirmation">Clear history</button>
+        </div>
+      </div>
+      <div class="shadowGrid">
+        <div class="shadowCard">
+          <div class="shadowCardTitle">All executions · current ratio basis</div>
+          <div id="shadowAllRatio" class="shadowRatio">—</div>
+          <div id="shadowAllMeta" class="shadowMeta">Waiting for complete window…</div>
+        </div>
+        <div class="shadowCard">
+          <div id="shadowFilteredTitle" class="shadowCardTitle">Executions ≥ $1,000</div>
+          <div id="shadowFilteredRatio" class="shadowRatio">—</div>
+          <div id="shadowFilteredMeta" class="shadowMeta">Waiting for trade-size comparison…</div>
+        </div>
+        <div class="shadowCard">
+          <div class="shadowCardTitle">Observation status</div>
+          <div id="shadowStatus" class="shadowState warning">Loading research module…</div>
+          <div class="shadowMeta">
+            New crossings only. This does not override session, macro or technical gates.
+          </div>
+        </div>
+      </div>
+      <div id="shadowSummary" class="shadowSummary">No 15m outcomes yet. Forward observations accumulate while this page is open.</div>
+      <div class="shadowTableHeading">
+        <strong>Observed ratio crossings and forward movement</strong>
+        <span id="shadowEventCount">0 crossings stored locally</span>
+      </div>
+      <div class="shadowTableWrap" role="region" aria-label="Research crossing event history" tabindex="0">
+        <table class="shadowTable">
+          <thead><tr>
+            <th>Observed at</th><th>Ratio variant</th><th>Ratio</th>
+            <th>After 5m</th><th>After 15m</th><th>After 30m</th>
+          </tr></thead>
+          <tbody id="shadowEvents">
+            <tr><td class="shadowEmpty" colspan="6">Waiting for new, complete-window observations…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="shadowNote">
+        Positive price and VWAP percentages mean movement in the aggression direction (BUY up, SELL down).
+        Both ratios use the same rolling window and require ≥1,000 total units of the base asset on the
+        dominant side before an event is logged. The filtered variant additionally requires ≥10 qualifying
+        executions. The $1,000 filter is a provisional per-execution USD-notional cutoff,
+        <strong>not 1,000 orders</strong> and not a verified TensorCharts setting.
+        Only new, observed crossings are recorded (5m cooldown); missed checkpoints are marked “Not observed.”
+        Research data is stored only in this browser, up to 120 events. No predictive accuracy is claimed.
+      </p>
+    </section>
+
     <div class="bottom">
       <div class="bottomCell"><div class="bottomTitle">Source</div><div id="dataSource" class="bottomValue">Coinbase spot</div></div>
       <div class="bottomCell"><div class="bottomTitle">Window status</div><div id="windowStatus" class="bottomValue">partial</div></div>
@@ -1477,7 +1694,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.23.1";
+  const BUILD_ID = "2026.11.23.2";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
@@ -2746,6 +2963,40 @@
     }
 
     renderDecision();
+
+    // Passive shadow research observer. Not connected to the trade decision
+    // and deliberately isolated so a research fault cannot block live rendering.
+    if (window.TradesCounterShadow && typeof window.TradesCounterShadow.observe === "function") {
+      try {
+        const researchTech = technicalVotes();
+        const researchRegime = regimeInfo();
+        const researchMacro = macroInfo();
+        window.TradesCounterShadow.observe({
+          now: Date.now(),
+          product: el.product.value,
+          windowMinutes: mins,
+          trades: state.trades,
+          stats,
+          ratio: r.signed,
+          threshold: th,
+          price: state.lastPrice,
+          vwap: bands.vwap,
+          complete: !!windowComplete && decisionWindowComplete(),
+          dataFresh: !!state.lastTradeTs && Date.now() - state.lastTradeTs <= 30000,
+          context: {
+            techBuy: researchTech.ready ? researchTech.buy : null,
+            techSell: researchTech.ready ? researchTech.sell : null,
+            swing: researchRegime.ready ? researchRegime.bias : "unavailable",
+            macro: researchMacro.label
+          }
+        });
+      } catch (researchErr) {
+        if (!state.shadowErrorReported) {
+          state.shadowErrorReported = true;
+          console.warn("Optional shadow research observer failed; core trade decision is unaffected.", researchErr);
+        }
+      }
+    }
   }
 
   async function sleep(ms){
@@ -2997,5 +3248,6 @@
 
 })();
 </script>
+<script src="./research/shadow-v1.js" defer></script>
 </body>
 </html>
