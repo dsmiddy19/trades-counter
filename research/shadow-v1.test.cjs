@@ -8,7 +8,7 @@ const path = require("node:path");
 const source = fs.readFileSync(path.join(__dirname,"shadow-v1.js"),"utf8");
 const storageKey = "tc.shadow.research.v1";
 
-function setup(savedValue) {
+function setup(savedValue, fetchImpl) {
   const callbacks = new Map();
   const nodes = new Map();
   const memory = new Map();
@@ -35,7 +35,7 @@ function setup(savedValue) {
     getItem(k){return memory.get(k)??null;},
     setItem(k,v){memory.set(k,String(v));}
   };
-  const context = {document,window,localStorage,console,
+  const context = {document,window,localStorage,console,fetch:fetchImpl,
     Blob:class { constructor(x,o){this.parts=x;this.options=o;} },
     URL:{createObjectURL(){return "blob:stub";},revokeObjectURL(){}},
     setTimeout(fn){fn();},Date,Math,Number,String,Array,Object};
@@ -105,16 +105,110 @@ test("forward 5m, 15m and 30m directional price and VWAP outcomes are observed",
   assert.match(f.nodes.get("shadowSummary").textContent,/2\/1|1\/1/);
 });
 
-test("missing observations are never reconstructed from stale prices or a resumed browser", () => {
-  const f=setup(),t=Date.UTC(2026,10,23,14);
+test("a 30-second pause never marks future 5/15/30m checkpoints as missed", () => {
+  const f=setup(), t=Date.now()-40000;
   f.observe(sample(t,{ratio:1.1,tradeBuys:20}));
   f.observe(sample(t+1000,{ratio:1.9,tradeBuys:28}));
-  f.observe(sample(t+50000,{ratio:1.9,tradeBuys:28}));
+  f.observe(sample(t+38000,{ratio:1.9,tradeBuys:28}));
   assert.equal(f.saved().events.length,2);
-  assert.equal(f.saved().events[0].checkpoints["5"].status,"not observed");
-  const restored=setup(f.memory.get(storageKey));
-  assert.equal(restored.saved().events[0].checkpoints["15"].status,"not observed");
-  assert.equal(restored.saved().events[0].checkpoints["30"].status,"not observed");
+  for(const e of f.saved().events) {
+    assert.equal(e.checkpoints["5"],undefined);
+    assert.equal(e.checkpoints["15"],undefined);
+    assert.equal(e.checkpoints["30"],undefined);
+  }
+});
+
+test("browser reload preserves pending events and recorded samples, then measures the due checkpoint", () => {
+  const f=setup(),t=Date.now()-60000;
+  f.observe(sample(t,{ratio:1.2,tradeBuys:20}));
+  f.observe(sample(t+1000,{ratio:1.9,tradeBuys:28,price:2000,vwap:1998}));
+  f.observe(sample(t+60000,{ratio:1.9,tradeBuys:28,price:2002,vwap:1999}));
+  const before=f.saved();
+  assert.equal(before.events.length,2);
+  assert.ok(before.samples.length>0);
+  const reloaded=setup(f.memory.get(storageKey));
+  // Mock a resumed clock just after the 5-minute checkpoint.
+  reloaded.observe(sample(t+1000+5*60000+9000,{ratio:1.9,tradeBuys:28,price:2010,vwap:2004}));
+  const restored=reloaded.saved();
+  for (const e of restored.events) {
+    assert.equal(e.checkpoints["5"].status,"observed");
+    assert.ok(e.checkpoints["5"].pricePct>0);
+    assert.ok(e.checkpoints["5"].vwapPct>0);
+    assert.equal(e.checkpoints["15"],undefined);
+    assert.equal(e.checkpoints["30"],undefined);
+  }
+});
+
+test("late return marks only elapsed checkpoints missed, not future ones", () => {
+  const f=setup(),t=Date.now()-1000;
+  f.observe(sample(t,{ratio:1.2,tradeBuys:20}));
+  f.observe(sample(t+1000,{ratio:1.9,tradeBuys:28}));
+  f.observe(sample(t+9*60000,{ratio:1.9,tradeBuys:28,price:2020,vwap:2002}));
+  for(const e of f.saved().events) {
+    assert.equal(e.checkpoints["5"].status,"not observed");
+    assert.equal(e.checkpoints["15"],undefined);
+    assert.equal(e.checkpoints["30"],undefined);
+  }
+});
+
+test("legacy v1 not-observed outcomes recover approximate PRICE ONLY from Coinbase 1m candles", async () => {
+  const now=Date.now();
+  const entryTime=now-12*60000;
+  const due=entryTime+5*60000;
+  const minute=Math.floor(due/60000)*60000;
+  const event={
+    id:entryTime+"-all-buy",runId:"old-browser",time:entryTime,
+    product:"ETH-USD",windowMinutes:15,minUsd:1000,mode:"all",direction:"buy",
+    threshold:1.65,ratio:1.9,entryPrice:2000,entryVwap:1995,
+    selectedVolume:1500,eligibleExecutions:100,context:{},
+    checkpoints:{
+      "5":{status:"not observed"},
+      "15":{status:"not observed"},
+      "30":{status:"not observed"}
+    }
+  };
+  const fetched=[];
+  const fakeFetch=async url=>{
+    fetched.push(String(url));
+    return {ok:true,json:async()=>[[minute/1000,1990,2020,2000,2010,1234]]};
+  };
+  const f=setup(JSON.stringify({version:1,filterUsd:1000,events:[event]}),fakeFetch);
+  f.observe(sample(now,{ratio:1.2,tradeBuys:20}));
+  // Recovery is asynchronous, so let its microtasks settle.
+  await new Promise(resolve=>setImmediate(resolve));
+  const migrated=f.saved().events[0];
+  assert.equal(migrated.checkpoints["5"].status,"price_estimate");
+  assert.equal(migrated.checkpoints["5"].source,"coinbase_1m_candle_close");
+  assert.equal(migrated.checkpoints["5"].vwapPct,null);
+  assert.ok(Math.abs(migrated.checkpoints["5"].pricePct - 0.5) < 0.000001);
+  assert.equal(migrated.checkpoints["15"],undefined,"future event must be pending after v1 migration");
+  assert.equal(migrated.checkpoints["30"],undefined);
+  assert.ok(fetched.length>=1);
+  assert.match(f.nodes.get("shadowSummary").textContent,/1 pending/); // 15m still in the future
+  assert.doesNotMatch(f.nodes.get("shadowSummary").textContent,/price \+ VWAP follow-through/);
+});
+
+test("a recovered 15m candle price is excluded from full price+VWAP statistics", async () => {
+  const now=Date.now(),time=now-20*60000;
+  const due=time+15*60000;
+  const candleTs=Math.floor(due/60000)*60000;
+  const event={
+    id:time+"-large-sell",runId:"legacy",time,product:"ETH-USD",
+    windowMinutes:15,minUsd:1000,mode:"large",direction:"sell",threshold:1.65,
+    ratio:-1.7,entryPrice:2000,entryVwap:2003,selectedVolume:1300,
+    eligibleExecutions:100,context:{},
+    checkpoints:{"15":{status:"not observed"}}
+  };
+  const fetchMock=async ()=>({ok:true,json:async()=>[[candleTs/1000,1970,2010,2000,1980,123]]});
+  const f=setup(JSON.stringify({version:1,filterUsd:1000,events:[event]}),fetchMock);
+  f.observe(sample(now,{ratio:1.2,tradeBuys:20}));
+  await new Promise(resolve=>setImmediate(resolve));
+  const recovered=f.saved().events[0].checkpoints["15"];
+  assert.equal(recovered.status,"price_estimate");
+  assert.ok(recovered.pricePct>0,"SELL benefits from a falling estimated price");
+  assert.equal(recovered.vwapPct,null);
+  assert.match(f.nodes.get("shadowSummary").textContent,/Filtered: 0 full 15m observations · 1 price-only estimate/);
+  assert.doesNotMatch(f.nodes.get("shadowSummary").textContent,/price \+ VWAP follow-through/);
 });
 
 test("incomplete or stale feed never triggers new observations", () => {
