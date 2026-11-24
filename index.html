@@ -1231,7 +1231,7 @@
     <div class="top">
       <div class="titleRow">
         <h1>Trades Counter</h1>
-        <span id="buildStamp" class="buildStamp">Build 2026.11.24.2</span>
+        <span id="buildStamp" class="buildStamp">Build 2026.11.24.3</span>
         <a class="buildHistoryLink" href="./history.html" title="View the last five builds and prepare a safe rollback">History · rollback</a>
       </div>
       <div class="topRight">
@@ -1704,6 +1704,13 @@
     ws: null,
     wsSeq: 0,
     bootSeq: 0,
+    heartbeatId: 0,
+    heartbeatAt: 0,
+    restVerifiedAt: 0,
+    pollBusy: false,
+    backfillBusy: false,
+    repairAt: 0,
+    reconnectTimer: null,
     reconnectMs: 1200,
     liveMessages: 0,
     restPolls: 0,
@@ -1737,7 +1744,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.24.2";
+  const BUILD_ID = "2026.11.24.3";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
@@ -1930,24 +1937,51 @@
     }
   }
 
-  function addCoinbaseTrade(row){
-    addTrade({
-      id: el.product.value + ":" + String(row.trade_id),
-      ts: new Date(row.time).getTime(),
-      qty: Number(row.size),
-      buy: makerSideToAggBuy(row.side),
-      count: 1,
-      price: Number(row.price)
-    });
+  function addCoinbaseTrade(row, product=el.product.value){
+    if (product !== el.product.value || !row || !["buy","sell"].includes(row.side)) return;
+    const tradeId=Number(row.trade_id), ts=new Date(row.time).getTime();
+    const qty=Number(row.size), price=Number(row.price);
+    if (!Number.isSafeInteger(tradeId) || tradeId<=0 || !Number.isFinite(ts) ||
+        ts>Date.now()+5000 || !Number.isFinite(qty) || qty<=0 ||
+        !Number.isFinite(price) || price<=0) return;
+    addTrade({id:product+":"+tradeId,tradeId,ts,qty,buy:makerSideToAggBuy(row.side),count:1,price});
   }
 
+  // Keep a single execution at or before the rolling boundary as a coverage witness.
+  // The ratio and VWAP still exclude trades older than the selected window.
   function prune(){
-    const cutoff = Date.now() - winMs() - 10000;
-    const before = state.trades.length;
-    state.trades = state.trades.filter(t => t.ts >= cutoff);
-    if (state.trades.length !== before || state.ids.size > state.trades.length * 2 + 2000) {
-      state.ids = new Set(state.trades.map(t => t.id));
+    const cutoff=Date.now()-winMs();
+    let boundary=null;
+    const kept=[];
+    for(const t of state.trades){
+      if(t.ts>=cutoff) kept.push(t);
+      else if(!boundary || t.ts>boundary.ts || (t.ts===boundary.ts && t.tradeId>boundary.tradeId)) boundary=t;
     }
+    if(boundary) kept.push(boundary);
+    state.trades=kept;
+    state.ids=new Set(kept.map(t=>t.id));
+  }
+
+  function feedIntegrity(now=Date.now()){
+    if(state.backfillBusy) return {ok:false,label:"Backfilling",detail:"Verifying rolling trade history"};
+    if(!state.lastTradeTs || now-state.lastTradeTs>30000)
+      return {ok:false,label:"Stale feed",detail:"No fresh execution in 30 seconds"};
+    if(Math.max(state.heartbeatAt,state.restVerifiedAt)<now-15000)
+      return {ok:false,label:"Feed unverified",detail:"Waiting for Coinbase heartbeat or REST confirmation"};
+    const cutoff=now-winMs();
+    let oldest=Infinity,min=Infinity,max=-Infinity,count=0;
+    for(const t of state.trades){
+      if(!Number.isSafeInteger(t.tradeId)) continue;
+      oldest=Math.min(oldest,t.ts);
+      min=Math.min(min,t.tradeId);
+      max=Math.max(max,t.tradeId);
+      count++;
+    }
+    if(!count || oldest>cutoff)
+      return {ok:false,label:"Window partial",detail:"Waiting for the full rolling "+decisionWindowMinutes()+"m history"};
+    if(max-min+1!==count || state.heartbeatId>max)
+      return {ok:false,label:"Repairing gaps",detail:"Missing Coinbase execution IDs; verifying via REST"};
+    return {ok:true,label:"Window verified",detail:"Continuous execution IDs · fresh feed"};
   }
 
   function compute(minutes){
@@ -2189,6 +2223,7 @@
   }
 
   async function refreshTechnicals(){
+    const requestSeq=state.bootSeq;
     const product=el.product.value;
     const minutes=decisionWindowMinutes();
     const seconds=minutes*60;
@@ -2197,6 +2232,7 @@
     const startMs=endMs-(seconds*1000*120);
     try {
       const rows=await fetchJson(candleUrl(product,startMs,endMs,granularity));
+      if(requestSeq!==state.bootSeq) return;
       let bars=normalizeCandles(rows);
       if (seconds===1800) bars=aggregateCandles(bars,1800);
       const closes=bars.map(b=>b.close);
@@ -2214,6 +2250,7 @@
         rsi,prevRsi,cmf,prevCmf,updatedAt:Date.now()
       };
     } catch(err) {
+      if(requestSeq!==state.bootSeq) return;
       console.warn("Technical refresh failed",err);
       state.technicals={status:"error",macd:NaN,signal:NaN,histogram:NaN,prevHistogram:NaN,rsi:NaN,prevRsi:NaN,cmf:NaN,prevCmf:NaN,updatedAt:Date.now()};
     }
@@ -2306,6 +2343,7 @@
 
   async function refreshAtr(){
     const length = 14;
+    const requestSeq=state.bootSeq;
     const product = el.product.value;
     const seconds = atrWindowSeconds();
     const granularity = coinbaseCandleGranularity(seconds);
@@ -2316,6 +2354,7 @@
 
     try {
       const rows = await fetchJson(candleUrl(product, startMs, endMs, granularity));
+      if(requestSeq!==state.bootSeq) return;
       let bars = normalizeCandles(rows);
 
       if (seconds === 1800) {
@@ -2330,7 +2369,8 @@
         bars: atr.bars,
         window: (seconds / 60) + "m"
       };
-    } catch (err) {
+    } catch(err) {
+      if(requestSeq!==state.bootSeq) return;
       console.warn("ATR refresh failed", err);
       state.atr = { value: NaN, percent: NaN, bars: 0, window: (seconds / 60) + "m" };
     }
@@ -2409,13 +2449,7 @@
 
   function decisionWindowMinutes(){ return Number(el.window.value) || 15; }
 
-  function decisionWindowComplete(){
-    if (!state.trades.length) return false;
-    const mins=decisionWindowMinutes();
-    let oldest=Infinity;
-    for (const t of state.trades) if (t.ts<oldest) oldest=t.ts;
-    return oldest <= Date.now()-(mins*60*1000)+30000;
-  }
+  function decisionWindowComplete(){ return feedIntegrity().ok; }
 
   function isMajorNamedEvent(title){
     return /Powell|Fed Chair|FOMC.*(?:Statement|Minutes|Rate)|Federal Funds Rate|President Trump|Treasury Secretary|Jackson Hole/i.test(title||"");
@@ -2691,7 +2725,7 @@
 
   function technicalVotes(){
     const t=state.technicals;
-    if (t.status!=="ok") return {ready:false,macd:"neutral",rsi:"neutral",cmf:"neutral",buy:0,sell:0};
+    if (t.status!=="ok" || Date.now()-t.updatedAt>90000 || ![t.macd,t.signal,t.rsi,t.cmf].every(Number.isFinite)) return {ready:false,macd:"neutral",rsi:"neutral",cmf:"neutral",buy:0,sell:0};
 
     let macd="neutral";
     if (Number.isFinite(t.macd) && Number.isFinite(t.signal)) macd=t.macd>t.signal?"buy":t.macd<t.signal?"sell":"neutral";
@@ -2763,7 +2797,7 @@
     } else if (macro.blocked) {
       reason="Macro block: "+macro.detail;
     } else if (!complete) {
-      reason="Building a complete "+decisionMins+"-minute trade window.";
+      reason="Data integrity: "+feedIntegrity().detail+".";
     } else if (!flowDirection) {
       const gap=Math.max(0,th-Math.abs(Number.isFinite(r.signed)?r.signed:0));
       reason="Aggression has not reached ±"+th.toFixed(2)+" (needs "+gap.toFixed(2)+"x more).";
@@ -2817,7 +2851,11 @@
     el.flowGate.className="gateValue "+(d.flowPass?"pass":"fail");
     const dominantSide=d.flowDirection || (d.r.signed>=0?"buy":"sell");
     const rawDominant=dominantSide==="buy"?d.stats.buyVol:d.stats.sellVol;
-    if (d.flowPass) {
+    if (!d.complete) {
+      el.flowGate.className="gateValue block";
+      el.flowGate.textContent="DATA WAIT";
+      el.flowGateSub.textContent=feedIntegrity().detail;
+    } else if (d.flowPass) {
       el.flowGate.textContent=sideWord(d.flowDirection)+" READY";
       el.flowGateSub.textContent="Ratio "+d.r.text+" ✓ · "+sideWord(d.flowDirection)+" "+fmtSignalVol(d.dominantValue)+" ✓";
     } else if (d.flowDirection) {
@@ -2905,11 +2943,12 @@
     el.basisInfo.textContent = "Volume";
     el.dataSource.textContent = "Coinbase spot";
 
-    const naturallyComplete = state.bootStartedAt && (Date.now() - state.bootStartedAt >= winMs());
-    const windowComplete = state.windowComplete || naturallyComplete;
-    el.windowBadge.className = windowComplete ? "badge good" : "badge warn";
-    el.windowBadge.textContent = windowComplete ? "Window complete" : "Window partial";
-    el.windowStatus.textContent = windowComplete ? "complete" : "partial";
+    const integrity=feedIntegrity();
+    const windowComplete=integrity.ok;
+    el.windowBadge.className=windowComplete?"badge good":"badge warn";
+    el.windowBadge.textContent=integrity.label;
+    el.windowBadge.title=integrity.detail;
+    el.windowStatus.textContent=integrity.label;
 
     el.buyVol.textContent = fmtVol(stats.buyVol);
     el.sellVol.textContent = fmtVol(stats.sellVol);
@@ -3069,7 +3108,6 @@
     let complete = false;
     const maxPages = backfillMinutes <= 15 ? 40 : 90;
 
-    state.windowComplete = false;
     log("Backfilling " + product + " for " + backfillMinutes + "m signal window...");
 
     while (page < maxPages) {
@@ -3079,6 +3117,7 @@
       if (after !== null) url += "&after=" + encodeURIComponent(after);
 
       const rows = await fetchJson(url);
+      if (seq !== state.bootSeq) return {cancelled:true};
       if (!Array.isArray(rows) || !rows.length) break;
 
       page++;
@@ -3088,14 +3127,14 @@
         const ts = new Date(row.time).getTime();
         if (Number.isFinite(ts)) {
           oldest = Math.min(oldest, ts);
-          if (ts >= cutoff) {
-            addCoinbaseTrade(row);
-            added++;
-          }
+          addCoinbaseTrade(row, product);
+          added++;
         }
       }
 
-      after = rows[rows.length - 1].trade_id;
+      const next=rows[rows.length - 1].trade_id;
+      if(next===after) break;
+      after=next;
       render();
 
       if (oldest <= cutoff) {
@@ -3109,19 +3148,29 @@
   }
 
   async function pollLatest(){
+    if(state.pollBusy || state.backfillBusy) return;
+    const seq=state.bootSeq, product=el.product.value;
+    state.pollBusy=true;
     try {
-      const product = el.product.value;
-      const url = "https://api.exchange.coinbase.com/products/" + encodeURIComponent(product) + "/trades?limit=1000";
-      const rows = await fetchJson(url);
-
-      if (Array.isArray(rows)) {
-        for (const row of rows) addCoinbaseTrade(row);
-        state.restPolls++;
-        if (!state.ws || state.ws.readyState !== WebSocket.OPEN) setStatus("wait", "Polling");
+      const url="https://api.exchange.coinbase.com/products/"+encodeURIComponent(product)+"/trades?limit=1000";
+      const rows=await fetchJson(url);
+      if(seq!==state.bootSeq) return;
+      if(!Array.isArray(rows)||!rows.length) throw Error("Empty trades response");
+      for(const row of rows) addCoinbaseTrade(row,product);
+      state.restPolls++;
+      // A stale cached response cannot certify the live tape.
+      const latest=Math.max(...rows.map(r=>new Date(r.time).getTime()).filter(Number.isFinite));
+      if(latest>=Date.now()-30000) state.restVerifiedAt=Date.now();
+      const quality=feedIntegrity();
+      if(quality.label==="Repairing gaps" && Date.now()-state.repairAt>30000){
+        state.repairAt=Date.now();
+        state.backfillBusy=true;
+        try { await backfill(seq); }
+        finally { if(seq===state.bootSeq) state.backfillBusy=false; }
       }
-    } catch (err) {
-      console.warn("REST poll failed", err);
-    }
+      if(seq===state.bootSeq && (!state.ws || state.ws.readyState!==WebSocket.OPEN)) setStatus("wait","Polling");
+    } catch(err){ if(seq===state.bootSeq) console.warn("REST poll failed",err); }
+    finally { if(seq===state.bootSeq) state.pollBusy=false; }
   }
 
   function startPolling(){
@@ -3139,6 +3188,7 @@
 
   function closeWs(){
     state.wsSeq++;
+    if(state.reconnectTimer){clearTimeout(state.reconnectTimer);state.reconnectTimer=null;}
     if (state.ws) {
       try { state.ws.close(); } catch(e) {}
       state.ws = null;
@@ -3159,7 +3209,7 @@
       ws.send(JSON.stringify({
         type:"subscribe",
         product_ids:[product],
-        channels:["matches"]
+        channels:["matches","heartbeat"]
       }));
       state.reconnectMs = 1200;
       setStatus("live","Live");
@@ -3176,14 +3226,20 @@
         return;
       }
 
-      if (msg.type === "match" && msg.product_id === product) {
+      if(msg.type==="heartbeat" && msg.product_id===product){
+        const id=Number(msg.last_trade_id);
+        const ts=new Date(msg.time).getTime();
+        if(Number.isSafeInteger(id)&&id>0&&Number.isFinite(ts)&&Math.abs(Date.now()-ts)<15000){
+          state.heartbeatId=Math.max(state.heartbeatId,id);state.heartbeatAt=Date.now();
+        }
+      } else if ((msg.type === "match" || msg.type==="last_match") && msg.product_id === product) {
         addCoinbaseTrade({
           trade_id: msg.trade_id,
           time: msg.time,
           size: msg.size,
           price: msg.price,
           side: msg.side
-        });
+        },product);
         state.liveMessages++;
         log("Live stream receiving trades.");
       } else if (msg.type === "subscriptions") {
@@ -3203,7 +3259,8 @@
       if (seq !== state.wsSeq) return;
       setStatus("dead","Reconnecting");
       log("WebSocket closed " + e.code + ". Reconnecting in " + Math.round(state.reconnectMs/1000) + "s...", "warn");
-      setTimeout(connectWs, state.reconnectMs);
+      state.heartbeatAt=0;
+      state.reconnectTimer=setTimeout(()=>{if(seq===state.wsSeq)connectWs();},state.reconnectMs);
       state.reconnectMs = Math.min(15000, Math.round(state.reconnectMs * 1.7));
     };
   }
@@ -3216,6 +3273,8 @@
     state.atr = { value: NaN, percent: NaN, bars: 0, window: "" };
     state.technicals = { status:"loading", macd:NaN, signal:NaN, histogram:NaN, prevHistogram:NaN, rsi:NaN, prevRsi:NaN, cmf:NaN, prevCmf:NaN, updatedAt:0 };
     state.lastTradeTs = 0;
+    state.heartbeatId=0;state.heartbeatAt=0;state.restVerifiedAt=0;
+    state.pollBusy=false;state.backfillBusy=false;state.repairAt=0;
     state.lastPrice = NaN;
     state.bootStartedAt = Date.now();
     state.windowComplete = false;
@@ -3234,10 +3293,12 @@
     reset();
     render();
     setStatus("wait","Backfilling");
+    state.backfillBusy=true;
+    connectWs();
 
     try {
       const result = await backfill(seq);
-      if (result && result.cancelled) return;
+      if (seq!==state.bootSeq || (result && result.cancelled)) return;
 
       state.windowComplete = !!result.complete;
 
@@ -3247,17 +3308,19 @@
         log("Backfill complete. Starting live stream...");
       }
     } catch (err) {
+      if(seq!==state.bootSeq)return;
       console.error(err);
       state.windowComplete = false;
       log("Backfill failed: " + err.message + ". Live stream will still build from now forward.", "err");
     }
 
+    if(seq!==state.bootSeq)return;
+    state.backfillBusy=false;
     startPolling();
     startAtrRefresh();
     startTechnicalRefresh();
     startRegimeRefresh();
     if (!state.macroTimer) startMacroRefresh();
-    connectWs();
   }
 
   restore();
@@ -3291,6 +3354,6 @@
 
 })();
 </script>
-<script src="./research/shadow-v1.js?v=2026.11.24.2" defer></script>
+<script src="./research/shadow-v1.js?v=2026.11.24.3" defer></script>
 </body>
 </html>
