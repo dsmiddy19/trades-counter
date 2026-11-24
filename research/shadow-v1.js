@@ -410,54 +410,6 @@
     return recorded;
   }
 
-  function updateOutcomes(p) {
-    let changed = false;
-    for (const e of state.events) {
-      if (e.runId !== RUN_ID) continue;
-      if (CHECKPOINTS.every(m => e.checkpoints[checkpointKey(m)])) continue;
-
-      if (e.product !== p.product || e.windowMinutes !== p.windowMinutes) {
-        if (markPending(e, "not observed")) changed = true;
-        continue;
-      }
-      const gap = p.now - e.lastObservedAt;
-      if (gap > MAX_SAMPLE_GAP_MS) {
-        if (markPending(e, "not observed")) changed = true;
-        continue;
-      }
-
-      for (const m of CHECKPOINTS) {
-        const key = checkpointKey(m);
-        if (e.checkpoints[key]) continue;
-        const due = e.time + m * 60 * 1000;
-        if (p.now < due) continue;
-        if (p.now - due > MAX_CHECKPOINT_DELAY_MS || !p.dataFresh ||
-            !Number.isFinite(p.price) || !Number.isFinite(p.vwap)) {
-          if (p.now - due > MAX_CHECKPOINT_DELAY_MS) {
-            e.checkpoints[key] = {status:"not observed"};
-            changed = true;
-          }
-          continue;
-        }
-
-        const sign = e.direction === "buy" ? 1 : -1;
-        e.checkpoints[key] = {
-          status: "observed",
-          observedAt: p.now,
-          pricePct: sign * ((p.price / e.entryPrice) - 1) * 100,
-          vwapPct: sign * ((p.vwap / e.entryVwap) - 1) * 100,
-          price: p.price,
-          vwap: p.vwap,
-          // Directional change in distance of price from rolling VWAP.
-          distanceChangePct: sign * (((p.price - p.vwap) - (e.entryPrice - e.entryVwap)) / e.entryPrice) * 100
-        };
-        changed = true;
-      }
-      e.lastObservedAt = p.now;
-    }
-    return changed;
-  }
-
   function dom(tag, className, text) {
     const result = document.createElement(tag);
     if (className) result.className = className;
