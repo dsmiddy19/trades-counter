@@ -657,6 +657,16 @@
     renderSummary();
   });
 
+  // Flush the last few seconds of samples before a refresh/tab suspension.
+  if (typeof window.addEventListener === "function") {
+    window.addEventListener("pagehide", saveStorage);
+  }
+  if (typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) saveStorage();
+    });
+  }
+
   readStorage();
   el.minUsd.value = String(state.filterUsd);
   renderHistory();
