@@ -197,10 +197,14 @@
       for (const dir of ["buy", "sell"]) {
         const key = m.name + ":" + dir;
         const volume = dir === "buy" ? m.info.buy : m.info.sell;
-        const eligible = directionQualified(m.info.ratio, dir, p.threshold, volume, m.info.eligible, m.countGate);
-        const previous = state.observedEligibility[key];
+        // Detect a fresh ratio crossing. A delayed volume/count qualification alone
+        // must NOT be mislabeled as a threshold-crossing event.
+        const ratioCrossed = dir === "buy" ? m.info.ratio >= p.threshold : m.info.ratio <= -p.threshold;
+        const qualified = ratioCrossed &&
+          directionQualified(m.info.ratio, dir, p.threshold, volume, m.info.eligible, m.countGate);
+        const previousCrossed = state.observedEligibility[key];
         // On first observation, initialize without manufacturing a historic crossing.
-        if (previous === false && eligible) {
+        if (previousCrossed === false && qualified) {
           const last = state.events.find(e => e.mode === m.name && e.direction === dir &&
             e.product === p.product && e.windowMinutes === p.windowMinutes &&
             (m.name === "all" || e.minUsd === state.filterUsd));
@@ -209,7 +213,7 @@
             recorded = true;
           }
         }
-        state.observedEligibility[key] = eligible;
+        state.observedEligibility[key] = ratioCrossed;
       }
     }
     return recorded;
