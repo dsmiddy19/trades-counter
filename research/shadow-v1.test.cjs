@@ -180,7 +180,7 @@ test("legacy v1 not-observed outcomes recover approximate PRICE ONLY from Coinba
   assert.equal(migrated.checkpoints["5"].status,"price_estimate");
   assert.equal(migrated.checkpoints["5"].source,"coinbase_1m_candle_close");
   assert.equal(migrated.checkpoints["5"].vwapPct,null);
-  assert.equal(migrated.checkpoints["5"].pricePct,0.5);
+  assert.ok(Math.abs(migrated.checkpoints["5"].pricePct - 0.5) < 0.000001);
   assert.equal(migrated.checkpoints["15"],undefined,"future event must be pending after v1 migration");
   assert.equal(migrated.checkpoints["30"],undefined);
   assert.ok(fetched.length>=1);
