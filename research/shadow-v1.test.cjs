@@ -291,6 +291,28 @@ test("episodes separate opposing directions and changes in threshold, filter, ma
   assert.equal(f.nodes.get("shadowEvents").children.length,7);
 });
 
+test("raw event view is bounded for performance without deleting locally stored history", () => {
+  const t=Date.UTC(2026,10,23,8);
+  const events=Array.from({length:38},(_,i)=>
+    seededEvent(t+i*15*60000,"large", "buy",{suffix:"event"+i})
+  );
+  const f=setup(JSON.stringify({version:2,filterUsd:1000,events}));
+  assert.equal(f.saved().events.length,38,"records still retained");
+  assert.equal(f.nodes.get("shadowRawEvents").children.length,24,"only 24 DOM rows generated");
+  assert.match(f.nodes.get("shadowRawCount").textContent,/38/);
+  assert.match(f.nodes.get("shadowRawCount").textContent,/CSV includes all/);
+  assert.match(f.nodes.get("shadowSummary").textContent,/38 crossings/);
+});
+
+test("unchanged history is not redrawn on every live dashboard tick", () => {
+  const f=setup();
+  const t=Date.UTC(2026,10,24,15);
+  f.observe(sample(t,{ratio:1.2,tradeBuys:20}));
+  const initial=f.nodes.get("shadowRawEvents").children;
+  f.observe(sample(t+1000,{ratio:1.2,tradeBuys:20}));
+  assert.equal(f.nodes.get("shadowRawEvents").children,initial,
+    "same DOM history nodes survive an unchanged one-second render");
+});
 test("incomplete or stale feed never triggers new observations", () => {
   const f=setup(),t=Date.UTC(2026,10,23,14);
   f.observe(sample(t,{ratio:1.2,tradeBuys:20,complete:false}));
