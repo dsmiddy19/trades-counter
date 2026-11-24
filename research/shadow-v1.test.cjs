@@ -102,7 +102,8 @@ test("forward 5m, 15m and 30m directional price and VWAP outcomes are observed",
       assert.ok(e.checkpoints[key].distanceChangePct>0);
     }
   }
-  assert.match(f.nodes.get("shadowSummary").textContent,/2\/1|1\/1/);
+  assert.match(f.nodes.get("shadowSummary").textContent,/1 time-window episodes from 2 crossings/);
+  assert.match(f.nodes.get("shadowSummary").textContent,/Both 1/);
 });
 
 test("a 30-second pause never marks future 5/15/30m checkpoints as missed", () => {
@@ -184,8 +185,8 @@ test("legacy v1 not-observed outcomes recover approximate PRICE ONLY from Coinba
   assert.equal(migrated.checkpoints["15"],undefined,"future event must be pending after v1 migration");
   assert.equal(migrated.checkpoints["30"],undefined);
   assert.ok(fetched.length>=1);
-  assert.match(f.nodes.get("shadowSummary").textContent,/1 pending/); // 15m still in the future
-  assert.doesNotMatch(f.nodes.get("shadowSummary").textContent,/price \+ VWAP follow-through/);
+  assert.match(f.nodes.get("shadowSummary").textContent,/1 pending/); // anchor 15m still pending
+  assert.doesNotMatch(f.nodes.get("shadowSummary").textContent,/follow-through rate/);
 });
 
 test("a recovered 15m candle price is excluded from full price+VWAP statistics", async () => {
@@ -207,8 +208,87 @@ test("a recovered 15m candle price is excluded from full price+VWAP statistics",
   assert.equal(recovered.status,"price_estimate");
   assert.ok(recovered.pricePct>0,"SELL benefits from a falling estimated price");
   assert.equal(recovered.vwapPct,null);
-  assert.match(f.nodes.get("shadowSummary").textContent,/Filtered: 0 full 15m observations · 1 price-only estimate/);
+  assert.match(f.nodes.get("shadowSummary").textContent,/1\/1 moved with aggression at 15m/);
+  assert.match(f.nodes.get("shadowSummary").textContent,/0 exact price \+ VWAP outcomes/);
   assert.doesNotMatch(f.nodes.get("shadowSummary").textContent,/price \+ VWAP follow-through/);
+});
+
+
+function seededEvent(time,mode,direction="buy",options={}){
+  const cp = options.checkpoint15 ? {"15":options.checkpoint15} : {};
+  return {
+    id:time+"-"+mode+"-"+direction+"-"+(options.suffix||"event"),
+    runId:"prior_tab", time, product:options.product||"ETH-USD",
+    windowMinutes:options.windowMinutes||15,
+    minUsd:options.minUsd??1000,
+    mode, direction, threshold:options.threshold||1.65,
+    ratio:direction==="buy"?1.7:-1.7,
+    entryPrice:2000, entryVwap:2000,
+    selectedVolume:1600, eligibleExecutions:40,
+    checkpoints:cp,context:{}
+  };
+}
+
+test("a screenshot-like 11 crossings become five first-triggered episodes; variants do not imply fewer underlying trades", () => {
+  const hour=Date.UTC(2026,10,24,10,0,0);
+  const m=(h,minute)=>hour + (h-10)*3600000 + minute*60000;
+  const events=[
+    seededEvent(m(10,34),"large"),
+    seededEvent(m(12,13),"large"),
+    seededEvent(m(12,14),"all"),
+    seededEvent(m(12,20),"large",{direction:"buy",suffix:"extra"}), // duplicate episode
+    seededEvent(m(12,51),"all","sell"),
+    seededEvent(m(12,53),"large","sell"),
+    seededEvent(m(12,58),"large","sell",{suffix:"repeat"}),
+    seededEvent(m(14,9),"large","sell"),
+    seededEvent(m(14,10),"large","sell",{suffix:"repeat"}),
+    seededEvent(m(14,53),"all","sell"),
+    seededEvent(m(14,55),"large","sell")
+  ];
+  const f=setup(JSON.stringify({version:2,filterUsd:1000,events}));
+  assert.equal(f.saved().events.length,11,"original crossing records are preserved");
+  const summary=f.nodes.get("shadowSummary").textContent;
+  assert.match(summary,/5 time-window episodes from 11 crossings/);
+  assert.match(summary,/Both 3/);
+  assert.match(summary,/Filtered only 2/);
+  assert.match(summary,/All only 0/);
+  assert.equal(f.nodes.get("shadowEvents").children.length,5);
+  assert.equal(f.nodes.get("shadowRawEvents").children.length,11);
+  const row= f.nodes.get("shadowEvents").children.find(x =>
+    x.children.some(child=>child.textContent==="Both ratios" || (child.textContent||"").includes("Both ratios")));
+  assert.ok(row,"a paired-method episode is visible");
+});
+
+test("episode outcome uses the FIRST crossing only, never picks a better repeated signal", () => {
+  const time=Date.UTC(2026,10,23,15);
+  const events=[
+    seededEvent(time,"large","buy",{checkpoint15:{status:"price_estimate",pricePct:-0.3,vwapPct:null}}),
+    seededEvent(time+60000,"all","buy",{checkpoint15:{status:"observed",pricePct:0.9,vwapPct:0.5}}),
+    seededEvent(time+6*60000,"large","buy",{suffix:"repeat",checkpoint15:{status:"observed",pricePct:1.0,vwapPct:0.7}})
+  ];
+  const f=setup(JSON.stringify({version:2,filterUsd:1000,events}));
+  const summary=f.nodes.get("shadowSummary").textContent;
+  assert.match(summary,/1 time-window episodes from 3 crossings · Both 1/);
+  assert.match(summary,/0\/1 moved with aggression at 15m/);
+  assert.match(summary,/0 exact price \+ VWAP outcomes/);
+  assert.equal(f.nodes.get("shadowEvents").children.length,1);
+  assert.equal(f.nodes.get("shadowRawEvents").children.length,3);
+});
+
+test("episodes separate opposing directions and changes in threshold, filter, market, or window", () => {
+  const t=Date.UTC(2026,10,23,15);
+  const events=[
+    seededEvent(t,"all"),
+    seededEvent(t+1000,"large","sell"),
+    seededEvent(t+2000,"large","buy",{threshold:1.7}),
+    seededEvent(t+3000,"large","buy",{minUsd:5000}),
+    seededEvent(t+4000,"large","buy",{product:"BTC-USD"}),
+    seededEvent(t+5000,"large","buy",{windowMinutes:5}),
+    seededEvent(t+15*60000,"large","buy",{suffix:"next_window"})
+  ];
+  const f=setup(JSON.stringify({version:2,filterUsd:1000,events}));
+  assert.match(f.nodes.get("shadowSummary").textContent,/7 time-window episodes from 7 crossings/);
+  assert.equal(f.nodes.get("shadowEvents").children.length,7);
 });
 
 test("incomplete or stale feed never triggers new observations", () => {
