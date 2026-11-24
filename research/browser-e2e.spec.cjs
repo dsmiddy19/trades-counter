@@ -105,3 +105,70 @@ test("mobile layout and settings survive reload",async({page})=>{
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBeTruthy();
  expect(f.errors).toEqual([]);
 });
+
+test("live Coinbase ETH-USD: real browser obtains verified tape and independently reconciles rolling volume and VWAP",async({page})=>{
+ test.setTimeout(150000);
+ const errors=[];
+ const tape=new Map();
+ const responses=[];
+ let wsMatches=0,heartbeat=0;
+ const record=(row)=>{
+   const id=Number(row.trade_id), ts=Date.parse(row.time), qty=Number(row.size),price=Number(row.price);
+   if(Number.isSafeInteger(id)&&id>0&&Number.isFinite(ts)&&qty>0&&price>0&&["buy","sell"].includes(row.side))
+     tape.set(id,{id,ts,qty,price,side:row.side});
+ };
+ page.on("pageerror",e=>errors.push(String(e)));
+ page.on("websocket",ws=>{
+   ws.on("framereceived",f=>{
+     try{const m=JSON.parse(String(f.payload));
+       if(m.product_id!=="ETH-USD")return;
+       if(m.type==="match"||m.type==="last_match"){record(m);wsMatches++}
+       if(m.type==="heartbeat")heartbeat++;
+     }catch{}
+   });
+ });
+ page.on("response",r=>{
+   if(!r.url().includes("api.exchange.coinbase.com/products/ETH-USD/trades"))return;
+   responses.push({status:r.status(),url:r.url()});
+   if(r.ok())r.json().then(rows=>{if(Array.isArray(rows))rows.forEach(record)}).catch(()=>{});
+ });
+ await page.addInitScript(()=>{localStorage.setItem("tc.window","15");localStorage.setItem("tc.product","ETH-USD");localStorage.setItem("tc.threshold.v2","1.65")});
+ try{
+   await page.goto(BASE);
+   await expect(page.locator("#windowBadge")).toHaveText("Window verified",{timeout:110000});
+   // Observe the DOM and the independently captured tape at nearby times.
+   // Allow one render interval of turnover, not a discrepancy in the formulas.
+   let reconciled=false,lastCheck={};
+   for(let i=0;i<8;i++){
+     const d=await page.evaluate(()=>({now:Date.now(),ratio:document.getElementById("ratio").textContent,
+       count:document.getElementById("tradeCount").textContent,vwap:document.getElementById("vwap").textContent,
+       quality:document.getElementById("windowBadge").textContent}));
+     const number=x=>Number(x.replace(/,/g,""));
+     const n=number(d.count),actual=number(d.vwap),ratio=Number(d.ratio);
+     const rows=[...tape.values()].sort((a,b)=>a.ts-b.ts||a.id-b.id);
+     // Compare to the exact count from the displayed render, searching a bounded
+     // set of boundary trades because the DOM is updated once per second.
+     for(let k=0;k<=200&&!reconciled;k++){
+       const end=rows.length-k;
+       if(end<n||n<=0)break;
+       const window=rows.slice(end-n,end);
+       if(window[0].ts<d.now-902000||window[0].ts>d.now-898000||window.at(-1).ts<d.now-30000)continue;
+       const b=window.filter(x=>x.side==="sell").reduce((v,x)=>v+x.qty,0);
+       const s=window.filter(x=>x.side==="buy").reduce((v,x)=>v+x.qty,0);
+       const pv=window.reduce((v,x)=>v+x.price*x.qty,0);
+       const expectedVwap=pv/(b+s);
+       const expectedRatio=b>=s?b/s:-s/b;
+       lastCheck={n,actual,ratio,expectedVwap,expectedRatio,quality:d.quality};
+       if(d.quality==="Window verified"&&Math.abs(actual-expectedVwap)<=0.011&&Math.abs(ratio-expectedRatio)<=0.0051)reconciled=true;
+     }
+     if(reconciled)break;
+     await page.waitForTimeout(1000);
+   }
+   console.log("LIVE RECONCILIATION",JSON.stringify({wsMatches,heartbeat,restResponses:responses.length,captured:tape.size,lastCheck,reconciled}));
+   expect(reconciled,"Displayed VWAP and ratio must match independent calculation from captured real trades").toBeTruthy();
+   expect(errors).toEqual([]);
+ }catch(err){
+   console.log("LIVE DIAGNOSTICS",JSON.stringify({wsMatches,heartbeat,restResponses:responses.slice(-10),captured:tape.size,status:await page.locator("#windowBadge").textContent().catch(()=>null),errors}));
+   throw err;
+ }
+});
