@@ -51,7 +51,7 @@
   const state = {
     filterUsd: 1000,
     events: [],
-    lastHistoryRenderKey: "",
+    lastHistoryRenderKey: null,
     samples: [],
     currentScope: "",
     observedEligibility: Object.create(null),
