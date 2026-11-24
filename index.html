@@ -1536,7 +1536,7 @@
         executions. The $1,000 filter is a provisional per-execution USD-notional cutoff,
         <strong>not 1,000 orders</strong> and not a verified TensorCharts setting.
         Only new, observed crossings are recorded (5m cooldown). Pending checkpoints survive page refreshes.
-        A recorded price/VWAP sample near the checkpoint provides the full measurement. If that sample is
+        A recorded price/VWAP sample within 10 seconds of the checkpoint provides the full measurement. If that sample is
         missing, Coinbase 1-minute candle data may recover an <strong>approximate price only</strong>;
         VWAP is explicitly unavailable and that estimate is excluded from full follow-through statistics.
         Research data is stored only in this browser, up to 120 events. No predictive accuracy is claimed.
