@@ -1,6 +1,7 @@
-/* Trades Counter shadow research v1.
- * Passive observation only. Does not modify production trade decision inputs.
- * Samples the existing Coinbase spot tape and rolling VWAP once per render.
+/* Trades Counter shadow research v2.
+ * Passive observer: production signal logic is completely unaffected.
+ * Stores timestamped trade-price / rolling-VWAP samples for honest checkpoint recovery.
+ * Only historical price (not VWAP) can be approximated from Coinbase 1m candles.
  */
 (() => {
   "use strict";
@@ -14,7 +15,16 @@
   const MIN_FILTERED_EXECUTIONS = 10;
   const CROSSING_COOLDOWN_MS = 5 * 60 * 1000;
   const MAX_CHECKPOINT_DELAY_MS = 120 * 1000;
-  const MAX_SAMPLE_GAP_MS = 30 * 1000;
+  const SNAPSHOT_INTERVAL_MS = 5000;
+  const SNAPSHOT_TOLERANCE_MS = 25000;
+  const SNAPSHOT_RETENTION_MS = 37 * 60 * 1000;
+  const SAVE_INTERVAL_MS = 10000;
+  const RECOVERY_DELAY_MS = 120 * 1000;
+  const RECOVERY_INTERVAL_MS = 120 * 1000;
+  const RECOVERY_RETRY_MS = 10 * 60 * 1000;
+  const RECOVERY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+  const RECOVERY_BUCKET_MS = 4 * 60 * 60 * 1000;
+  const MAX_RECOVERY_BATCHES = 3;
   const RUN_ID = String(Date.now()) + "-" + Math.random().toString(36).slice(2);
   const $ = id => document.getElementById(id);
 
@@ -38,10 +48,14 @@
   const state = {
     filterUsd: 1000,
     events: [],
+    samples: [],
     currentScope: "",
     observedEligibility: Object.create(null),
     lastSampleAt: 0,
     lastSaveAt: 0,
+    nextRecoveryAt: 0,
+    recoveryBusy: false,
+    recoveryAttemptedAt: Object.create(null),
     lastSnapshot: null
   };
 
@@ -50,10 +64,12 @@
     return Number.isFinite(n) ? n : NaN;
   }
 
+  // Version-1 events are intentionally migrated in place: never throw away
+  // the crossings a user already collected or convert future deadlines to failures.
   function readStorage() {
     try {
       const saved = JSON.parse(localStorage.getItem(KEY) || "null");
-      if (!saved || saved.version !== 1) return;
+      if (!saved || ![1, 2].includes(saved.version)) return;
       if ([500, 1000, 2500, 5000, 10000, 25000].includes(Number(saved.filterUsd))) {
         state.filterUsd = Number(saved.filterUsd);
       }
@@ -66,10 +82,26 @@
           typeof e.product === "string" &&
           e.checkpoints && typeof e.checkpoints === "object"
         ).slice(0, MAX_EVENTS);
-        // A prior tab session cannot provide timestamp-accurate forward samples.
+        const now = Date.now();
         for (const e of state.events) {
-          if (e.runId !== RUN_ID) markPending(e, "not observed");
+          for (const m of CHECKPOINTS) {
+            const key = checkpointKey(m);
+            // v1 accidentally marked every future checkpoint "not observed"
+            // after a browser refresh or brief interruption.
+            if (e.checkpoints[key]?.status === "not observed" &&
+                now < e.time + m * 60 * 1000) delete e.checkpoints[key];
+          }
         }
+      }
+      if (Array.isArray(saved.samples)) {
+        const cutoff = Date.now() - SNAPSHOT_RETENTION_MS;
+        state.samples = saved.samples.filter(s =>
+          s && Number.isFinite(s.ts) && s.ts >= cutoff &&
+          typeof s.product === "string" &&
+          Number.isFinite(s.windowMinutes) &&
+          Number.isFinite(s.price) && s.price > 0 &&
+          Number.isFinite(s.vwap) && s.vwap > 0
+        ).slice(-550);
       }
     } catch (err) {
       console.warn("Shadow research storage unavailable", err);
@@ -79,9 +111,10 @@
   function saveStorage() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
-        version: 1,
+        version: 2,
         filterUsd: state.filterUsd,
-        events: state.events.slice(0, MAX_EVENTS)
+        events: state.events.slice(0, MAX_EVENTS),
+        samples: state.samples
       }));
       state.lastSaveAt = Date.now();
     } catch (err) {
@@ -144,16 +177,173 @@
 
   function checkpointKey(minute) { return String(minute); }
 
-  function markPending(event, reason) {
+  function checkpointDue(event, minute) {
+    return event.time + minute * 60 * 1000;
+  }
+
+  function recordSample(p) {
+    if (!p.complete || !p.dataFresh ||
+        !Number.isFinite(p.price) || p.price <= 0 ||
+        !Number.isFinite(p.vwap) || p.vwap <= 0) return false;
+    const last = state.samples[state.samples.length - 1];
+    if (last && p.now - last.ts < SNAPSHOT_INTERVAL_MS &&
+        last.product === p.product && last.windowMinutes === p.windowMinutes) return false;
+    state.samples.push({
+      ts: p.now,
+      product: p.product,
+      windowMinutes: p.windowMinutes,
+      price: p.price,
+      vwap: p.vwap
+    });
+    const cutoff = p.now - SNAPSHOT_RETENTION_MS;
+    state.samples = state.samples.filter(s => s.ts >= cutoff).slice(-550);
+    return true;
+  }
+
+  function closestSample(event, due) {
+    let nearest = null, nearestGap = SNAPSHOT_TOLERANCE_MS + 1;
+    for (const s of state.samples) {
+      if (s.product !== event.product || s.windowMinutes !== event.windowMinutes) continue;
+      const gap = Math.abs(s.ts - due);
+      if (gap < nearestGap) {
+        nearestGap = gap;
+        nearest = s;
+      }
+    }
+    return nearestGap <= SNAPSHOT_TOLERANCE_MS ? nearest : null;
+  }
+
+  function observationFromSample(event, sample, due) {
+    const sign = event.direction === "buy" ? 1 : -1;
+    if (!Number.isFinite(event.entryPrice) || event.entryPrice <= 0 ||
+        !Number.isFinite(event.entryVwap) || event.entryVwap <= 0) return null;
+    return {
+      status: "observed",
+      source: "recorded_price_and_vwap",
+      observedAt: sample.ts,
+      offsetSeconds: Math.round((sample.ts - due) / 1000),
+      pricePct: sign * (sample.price / event.entryPrice - 1) * 100,
+      vwapPct: sign * (sample.vwap / event.entryVwap - 1) * 100,
+      price: sample.price,
+      vwap: sample.vwap,
+      distanceChangePct: sign *
+        (((sample.price - sample.vwap) - (event.entryPrice - event.entryVwap)) / event.entryPrice) * 100
+    };
+  }
+
+  // Do not mark future checkpoints as lost just because the browser slept or
+  // the active market/window changed. A stored sample may still resolve them.
+  function updateOutcomes(p) {
     let changed = false;
-    for (const m of CHECKPOINTS) {
-      const key = checkpointKey(m);
-      if (!event.checkpoints[key]) {
-        event.checkpoints[key] = { status: reason };
-        changed = true;
+    for (const e of state.events) {
+      for (const m of CHECKPOINTS) {
+        const key = checkpointKey(m);
+        const due = checkpointDue(e, m);
+        const current = e.checkpoints[key];
+        if (current?.status === "observed" || current?.status === "price_estimate") continue;
+        if (p.now < due) continue;
+
+        const sample = closestSample(e, due);
+        if (sample) {
+          const result = observationFromSample(e, sample, due);
+          if (result) {
+            e.checkpoints[key] = result;
+            changed = true;
+            continue;
+          }
+        }
+        // A missed deadline is only labeled after its own due time, not earlier.
+        // Keep it eligible for price-only candle recovery later.
+        if (p.now > due + MAX_CHECKPOINT_DELAY_MS && !current) {
+          e.checkpoints[key] = {status: "not observed"};
+          changed = true;
+        }
       }
     }
     return changed;
+  }
+
+  // Fetch groups of 1m Coinbase spot candles, never fake a rolling VWAP from
+  // OHLCV data. Recovered price is approximate to the minute close only.
+  async function recoverHistoricalPrice(now) {
+    if (state.recoveryBusy || now < state.nextRecoveryAt) return;
+    state.nextRecoveryAt = now + RECOVERY_INTERVAL_MS;
+    const groups = new Map();
+    for (const e of state.events) {
+      if (!Number.isFinite(e.entryPrice) || e.entryPrice <= 0) continue;
+      if (!/^[A-Z0-9]+-USD$/.test(e.product)) continue;
+      for (const m of CHECKPOINTS) {
+        const key = checkpointKey(m);
+        if (["observed", "price_estimate"].includes(e.checkpoints[key]?.status)) continue;
+        const due = checkpointDue(e, m);
+        if (now - due < RECOVERY_DELAY_MS || now - due > RECOVERY_RETENTION_MS) continue;
+        const bucket = Math.floor(due / RECOVERY_BUCKET_MS) * RECOVERY_BUCKET_MS;
+        const groupId = e.product + "|" + bucket;
+        if (!groups.has(groupId)) groups.set(groupId, {product:e.product, bucket, entries:[]});
+        groups.get(groupId).entries.push({event:e, minute:m, due});
+      }
+    }
+    const eligibleGroups = [...groups.entries()]
+      .filter(([id]) => now - (state.recoveryAttemptedAt[id] || 0) >= RECOVERY_RETRY_MS)
+      .sort((a,b) => b[1].bucket - a[1].bucket)
+      .slice(0, MAX_RECOVERY_BATCHES);
+    if (!eligibleGroups.length) return;
+
+    state.recoveryBusy = true;
+    let changed = false;
+    try {
+      for (const [id, group] of eligibleGroups) {
+        state.recoveryAttemptedAt[id] = now;
+        const start = new Date(group.bucket).toISOString();
+        const end = new Date(group.bucket + RECOVERY_BUCKET_MS).toISOString();
+        const url = "https://api.exchange.coinbase.com/products/" +
+          encodeURIComponent(group.product) + "/candles?granularity=60&start=" +
+          encodeURIComponent(start) + "&end=" + encodeURIComponent(end);
+        try {
+          const response = await fetch(url, {cache:"no-store"});
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const rows = await response.json();
+          if (!Array.isArray(rows)) throw new Error("Expected Coinbase candles array");
+          const closes = new Map();
+          for (const row of rows) {
+            if (!Array.isArray(row) || row.length < 5) continue;
+            const candleTime = num(row[0]) * 1000;
+            const close = num(row[4]);
+            if (Number.isFinite(candleTime) && Number.isFinite(close) && close > 0) {
+              closes.set(candleTime,close);
+            }
+          }
+          for (const {event,minute,due} of group.entries) {
+            const key = checkpointKey(minute);
+            if (["observed", "price_estimate"].includes(event.checkpoints[key]?.status)) continue;
+            const candleStart = Math.floor(due / 60000) * 60000;
+            const close = closes.get(candleStart);
+            if (!Number.isFinite(close)) continue;
+            const sign = event.direction === "buy" ? 1 : -1;
+            event.checkpoints[key] = {
+              status: "price_estimate",
+              source: "coinbase_1m_candle_close",
+              observedAt: candleStart + 60000,
+              price: close,
+              pricePct: sign * (close / event.entryPrice - 1) * 100,
+              vwap: null,
+              vwapPct: null
+            };
+            changed = true;
+          }
+        } catch (err) {
+          // Research recovery is best effort and cannot affect trade signals.
+          console.warn("Shadow price-only recovery unavailable for " + group.product, err);
+        }
+      }
+    } finally {
+      state.recoveryBusy = false;
+      if (changed) {
+        saveStorage();
+        renderHistory();
+        renderSummary();
+      }
+    }
   }
 
   function addEvent(p, mode, direction, ratio, selected) {
@@ -287,14 +477,29 @@
       td.classList.add("pending");
       return td;
     }
+    if (result.status === "price_estimate") {
+      const price = dom("div", result.pricePct > 0 ? "positive" : result.pricePct < 0 ? "negative" : "",
+        "Price ≈ " + fmtPercent(result.pricePct));
+      const note = dom("small", "", "1m close · VWAP unavailable");
+      td.title = "Approximate Coinbase 1-minute candle closing price; rolling VWAP was not recorded.";
+      td.append(price,note);
+      return td;
+    }
     if (result.status !== "observed") {
-      td.textContent = result.status === "not observed" ? "Not observed" : "Pending";
+      td.textContent = result.status === "not observed" ? "VWAP not observed" : "Pending";
       td.classList.add("pending");
       return td;
     }
-    const p = dom("div", result.pricePct > 0 ? "positive" : result.pricePct < 0 ? "negative" : "", "Price " + fmtPercent(result.pricePct));
-    const v = dom("div", result.vwapPct > 0 ? "positive" : result.vwapPct < 0 ? "negative" : "", "VWAP " + fmtPercent(result.vwapPct));
-    td.append(p, v);
+    const p = dom("div", result.pricePct > 0 ? "positive" : result.pricePct < 0 ? "negative" : "",
+      "Price " + fmtPercent(result.pricePct));
+    const v = dom("div", result.vwapPct > 0 ? "positive" : result.vwapPct < 0 ? "negative" : "",
+      "VWAP " + fmtPercent(result.vwapPct));
+    if (Number.isFinite(result.offsetSeconds)) {
+      td.title = "Recorded trade-price / rolling-VWAP sample " +
+        Math.abs(result.offsetSeconds) + "s " + (result.offsetSeconds >= 0 ? "after" : "before") +
+        " checkpoint time";
+    }
+    td.append(p,v);
     return td;
   }
 
@@ -329,19 +534,25 @@
   }
 
   function renderSummary() {
-    const completed = mode => state.events.filter(e => e.mode === mode &&
-      e.checkpoints["15"] && e.checkpoints["15"].status === "observed");
-    const all = completed("all");
-    const large = completed("large");
-    const describe = (name, rows) => {
-      if (!rows.length) return name + ": no completed 15m observations";
-      const follow = rows.filter(e => e.checkpoints["15"].pricePct > 0 && e.checkpoints["15"].vwapPct > 0).length;
-      const avg = rows.reduce((v,e) => v + e.checkpoints["15"].pricePct, 0) / rows.length;
-      return name + ": " + follow + "/" + rows.length +
+    const describe = (name,mode) => {
+      const matching = state.events.filter(e => e.mode === mode);
+      const complete = matching.filter(e => e.checkpoints["15"]?.status === "observed");
+      const approximate = matching.filter(e => e.checkpoints["15"]?.status === "price_estimate");
+      const pending = matching.filter(e => !e.checkpoints["15"]);
+      if (!complete.length) {
+        return name + ": 0 full 15m observations" +
+          (approximate.length ? " · " + approximate.length + " price-only estimate(s)" : "") +
+          (pending.length ? " · " + pending.length + " pending" : "");
+      }
+      const follow = complete.filter(e => e.checkpoints["15"].pricePct > 0 &&
+        e.checkpoints["15"].vwapPct > 0).length;
+      const avg = complete.reduce((sum,e) => sum + e.checkpoints["15"].pricePct, 0) / complete.length;
+      return name + ": " + follow + "/" + complete.length +
         " price + VWAP follow-through · avg directional price " + fmtPercent(avg) +
-        (rows.length < 20 ? " (small sample)" : "");
+        (approximate.length ? " · " + approximate.length + " price-only estimate(s) excluded" : "") +
+        (complete.length < 20 ? " (small sample)" : "");
     };
-    el.summary.textContent = describe("All", all) + "   |   " + describe("Filtered", large);
+    el.summary.textContent = describe("All","all") + "   |   " + describe("Filtered","large");
   }
 
   function render(p, filtered, full, fresh) {
@@ -396,7 +607,7 @@
       ];
       for (const m of CHECKPOINTS) {
         const x = e.checkpoints[checkpointKey(m)];
-        row.push(x && x.status === "observed" ? x.pricePct : "");
+        row.push(x && ["observed","price_estimate"].includes(x.status) ? x.pricePct : "");
         row.push(x && x.status === "observed" ? x.vwapPct : "");
         row.push(x ? x.status : "pending");
       }
@@ -448,20 +659,19 @@
       Number.isFinite(p.vwap) && p.vwap > 0 &&
       Number.isFinite(p.threshold) && p.threshold > 1;
 
-    if (usable) {
-      const recorded = updateCrossings(p, filtered);
-      const outcomesChanged = updateOutcomes(p);
-      if (outcomesChanged && !recorded) saveStorage();
-    } else {
-      // Do not manufacture first crossings from partial/stale data.
-      // Still expire abandoned observations instead of relabeling them as measured.
-      const expired = state.events.some(e => {
-        if (e.runId !== RUN_ID || CHECKPOINTS.every(m => e.checkpoints[checkpointKey(m)])) return false;
-        if (p.now - e.lastObservedAt <= MAX_SAMPLE_GAP_MS) return false;
-        return markPending(e, "not observed");
-      });
-      if (expired) saveStorage();
-    }
+    // Every valid live observation contributes a timestamped sample.
+    // Preserve it across reloads so missed browser frames do not erase outcomes.
+    const sampleAdded = recordSample(p);
+    let recorded = false;
+    if (usable) recorded = updateCrossings(p, filtered);
+    const outcomesChanged = updateOutcomes(p);
+    if ((sampleAdded && Date.now() - state.lastSaveAt >= SAVE_INTERVAL_MS) ||
+        (outcomesChanged || recorded)) saveStorage();
+
+    // Nonblocking, rate-limited research-only historical price fallback.
+    // This never claims to reconstruct the original rolling VWAP.
+    recoverHistoricalPrice(p.now).catch(err =>
+      console.warn("Optional shadow historical recovery failed", err));
 
     render(p, filtered, p.complete, p.dataFresh);
     renderHistory();
@@ -487,6 +697,7 @@
     if (!state.events.length) return;
     if (!window.confirm("Clear locally recorded research events? Export a CSV first if you need them.")) return;
     state.events = [];
+    state.samples = [];
     state.observedEligibility = Object.create(null);
     state.currentScope = "";
     saveStorage();
