@@ -72,21 +72,23 @@
     if(!p||!Number.isFinite(p.now)||!Array.isArray(p.trades))return false;
     const scope=p.product+"|"+p.windowMinutes+"|"+p.threshold;
     if(scope!==s.scope){s.scope=scope;s.armed=false;s.lastAction=null;}
-    const rows=orderedTrades(p.trades);
+    let rows=null;
+    const getRows=()=>rows||(rows=orderedTrades(p.trades));
     let changed=false;
     for(const t of s.records){
       if(t.status!=="open")continue;
-      if(t.product===p.product)changed=advance(t,rows,p.now)||changed;
+      if(t.product===p.product)changed=advance(t,getRows(),p.now)||changed;
       else if(p.now>t.startedAt+HORIZON+120000){settle(t,"unknown",null,p.now);changed=true;}
     }
-    if(!p.verified){s.armed=false;s.lastAction=null;return changed;}
+    if(!p.verified||!p.gatesReady){s.armed=false;s.lastAction=null;return changed;}
     if(!s.armed){s.armed=true;s.lastAction=p.action;return changed;}
     const fresh=(p.action==="BUY"||p.action==="SELL")&&p.action!==s.lastAction;
     s.lastAction=p.action;
-    if(!fresh||p.windowMinutes!==15||!rows.length||!positive(p.price)||!positive(p.vwap))return changed;
+    if(!fresh||p.windowMinutes!==15||!p.trades.length||!positive(p.price)||!positive(p.vwap))return changed;
     // One simulated position at a time, including across market switches.
     if(s.records.some(t=>t.status==="open")){s.skipped++;return true;}
-    const last=rows[rows.length-1];
+    const last=getRows().at(-1);
+    if(!last)return changed;
     if(last.ts>p.now||p.now-last.ts>30000||Math.abs(last.price-p.price)>1e-8)return changed;
     const t={id:p.product+"-"+p.now+"-"+last.tradeId,product:p.product,side:p.action,
       startedAt:p.now,entry:last.price,entryVwap:p.vwap,entryDistance:(last.price/p.vwap-1)*100,
@@ -107,13 +109,13 @@
     let saved=null;try{saved=JSON.parse(storage.getItem(KEY)||"null")}catch{}
     const s=createState(saved);
     const fields=["tp","sl","fee","slip"];
-    let lastDraw="",lastSave=0,storageError=false;
+    let lastDraw="",storageError=false;
     const pct=n=>Number.isFinite(n)?(n>0?"+":"")+n.toFixed(3)+"%":"—";
     const money=n=>positive(n)?n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:4}):"—";
     const time=n=>new Date(n).toLocaleString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
     const cell=(tr,text)=>{const td=document.createElement("td");td.textContent=text;tr.appendChild(td);return td;};
     function save(){
-      try{storage.setItem(KEY,JSON.stringify(serialize(s)));lastSave=Date.now();storageError=false}
+      try{storage.setItem(KEY,JSON.stringify(serialize(s)));storageError=false}
       catch{storageError=true}
     }
     function draw(){
@@ -139,7 +141,7 @@
     }
     fields.forEach(k=>{$("paper-"+k).value=s.settings[k];});
     $("paperApply").addEventListener("click",()=>{
-      const next=Object.fromEntries(fields.map(k=>[k,Number($("paper-"+k).value)]));
+      const next=Object.fromEntries(fields.map(k=>[k,$("paper-"+k).value.trim()===""?NaN:Number($("paper-"+k).value)]));
       if(!validSettings(next)){$("paperSettingsNote").textContent="Invalid settings: TP/SL >0 to 20%; fee/slippage 0 to 2% per side.";return;}
       s.settings=next;save();$("paperSettingsNote").textContent="Saved for future entries. Existing entries retain their original settings.";draw();
     });
