@@ -106,6 +106,32 @@ test("mobile layout and settings survive reload",async({page})=>{
  expect(f.errors).toEqual([]);
 });
 
+test("paper study receives displayed decisions and settles first target in browser",async({page})=>{
+ const f=await fixture(page);
+ await tick(page,2500);
+ await expect(page.locator("#decisionAction")).toHaveText("BUY");
+ await expect(page.locator("#paperSummary")).toContainText("0 paper entries");
+ const sock=f.sockets.at(-1);
+ async function send(id,size,price,side){
+   const now=await page.evaluate(()=>Date.now());
+   sock.ws.send(JSON.stringify({type:"match",product_id:"ETH-USD",trade_id:id,time:new Date(now).toISOString(),size:String(size),price:String(price),side}));
+   await tick(page,1500);
+ }
+ await send(105,600,2000,"buy");
+ await expect(page.locator("#decisionAction")).toHaveText("NO-GO");
+ await send(106,1000,2000,"sell");
+ await expect(page.locator("#decisionAction")).toHaveText("BUY");
+ await expect(page.locator("#paperSummary")).toContainText("1 open");
+ await send(107,1,2012,"sell");
+ await expect(page.locator("#paperSummary")).toContainText("1 TP first");
+ await expect(page.locator("#paperRows")).toContainText("TP first");
+ const records=await page.evaluate(()=>JSON.parse(localStorage.getItem("tc.paper.v1")).records);
+ expect(records).toHaveLength(1);expect(records[0].status).toBe("tp");
+ expect(records[0].gross).toBeCloseTo(.6,7);
+ expect(records[0].net).toBeCloseTo(.43952,7);
+ expect(f.errors).toEqual([]);
+});
+
 test("live Coinbase ETH-USD: real browser obtains verified tape and independently reconciles rolling volume and VWAP",async({page})=>{
  test.setTimeout(150000);
  const errors=[];
