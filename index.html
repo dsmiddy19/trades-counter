@@ -3082,7 +3082,7 @@
     try {
       if(window.TradesCounterPaper) window.TradesCounterPaper.observe({
         now:Date.now(),product:el.product.value,windowMinutes:mins,threshold:th,
-        verified:decision.complete && windowComplete,action:decision.action,
+        verified:decision.complete && windowComplete,gatesReady:decision.tv.ready && decision.macro.ready,action:decision.action,
         price:state.lastPrice,vwap:bands.vwap,ratio:r.signed,techVotes:decision.aligned,
         trades:state.trades
       });
