@@ -1,26 +1,22 @@
 {
-  "generated_at": "2026-11-24T05:22:03.467862Z",
+  "generated_at": "2026-11-25T13:07:37.473797Z",
   "source": "SoSoValue API",
   "source_url": "https://sosovalue.com/developer/data/etf",
   "etf": {
-    "date": "2026-11-23",
-    "btc_1d": -569739636.3,
-    "eth_1d": -84963312.73,
-    "btc_5d": -2367461517.28,
-    "eth_5d": -382506590.5,
-    "btc_value_traded_1d": 3527036174.8,
-    "eth_value_traded_1d": 472075791.0,
-    "total_value_traded_1d": 3999111965.8,
-    "btc_net_assets": 74124798305.69,
-    "eth_net_assets": 9216025249.72,
-    "total_net_assets": 83340823555.41,
-    "btc_cum_net_inflow": 52273635551.11,
-    "eth_cum_net_inflow": 11124443949.32,
+    "date": "2026-11-24",
+    "btc_1d": -231556490.07,
+    "eth_1d": -64024937.8,
+    "btc_5d": -2359073140.53,
+    "eth_5d": -417441233.45,
+    "btc_value_traded_1d": 2499017019.7,
+    "eth_value_traded_1d": 425004377.3,
+    "total_value_traded_1d": 2924021397.0,
+    "btc_net_assets": 72009917872.68,
+    "eth_net_assets": 8870809477.91,
+    "total_net_assets": 80880727350.59,
+    "btc_cum_net_inflow": 52042079061.04,
+    "eth_cum_net_inflow": 11060419011.52,
     "btc_rows": [
-      {
-        "date": "2026-11-17",
-        "net_flow": -239944866.82
-      },
       {
         "date": "2026-11-18",
         "net_flow": -306421294.34
@@ -36,13 +32,13 @@
       {
         "date": "2026-11-23",
         "net_flow": -569739636.3
+      },
+      {
+        "date": "2026-11-24",
+        "net_flow": -231556490.07
       }
     ],
     "eth_rows": [
-      {
-        "date": "2026-11-17",
-        "net_flow": -29090294.84
-      },
       {
         "date": "2026-11-18",
         "net_flow": -39833264.72
@@ -58,6 +54,10 @@
       {
         "date": "2026-11-23",
         "net_flow": -84963312.73
+      },
+      {
+        "date": "2026-11-24",
+        "net_flow": -64024937.8
       }
     ],
     "source_url": "https://sosovalue.com/developer/data/etf"
