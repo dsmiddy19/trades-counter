@@ -1223,6 +1223,9 @@
   .shadowRawDetails .shadowTableWrap{border:0;border-radius:0}
   .shadowSummary{white-space:pre-line}
 
+  .paperSettings{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:12px 0}
+  .paperSettings label{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#b7b7c4}
+  .paperSettings input{width:100px;max-width:100%;box-sizing:border-box;background:#18181d;color:inherit;border:1px solid #36363d;border-radius:7px;padding:8px}
 </style>
 </head>
 <body>
@@ -1231,7 +1234,7 @@
     <div class="top">
       <div class="titleRow">
         <h1>Trades Counter</h1>
-        <span id="buildStamp" class="buildStamp">Build 2026.11.24.3</span>
+        <span id="buildStamp" class="buildStamp">Build 2026.11.25.1</span>
         <a class="buildHistoryLink" href="./history.html" title="View the last five builds and prepare a safe rollback">History · rollback</a>
       </div>
       <div class="topRight">
@@ -1583,6 +1586,30 @@
       </p>
     </section>
 
+    <section id="paperStudy" class="shadowResearch" aria-labelledby="paperTitle">
+      <div class="shadowHeader">
+        <div>
+          <div class="shadowEyebrow">Paper study · no orders · never changes the scalp signal</div>
+          <h2 id="paperTitle" class="shadowTitle">What happens after a qualified 15m signal?</h2>
+          <p class="shadowIntro">Tracks new verified BUY/SELL transitions using the existing decision gates. One paper position at a time, with a 30-minute observation limit.</p>
+        </div>
+        <div class="shadowActions"><button id="paperExport" type="button">Export paper CSV</button></div>
+      </div>
+      <div class="paperSettings">
+        <label>Take profit (%) <input type="number" id="paper-tp" min="0.01" max="20" step="0.01" value="0.5"></label>
+        <label>Stop loss (%) <input type="number" id="paper-sl" min="0.01" max="20" step="0.01" value="1.5"></label>
+        <label>Fee per side (%) <input type="number" id="paper-fee" min="0" max="2" step="0.01" value="0.06"></label>
+        <label>Slippage per side (%) <input type="number" id="paper-slip" min="0" max="2" step="0.01" value="0.02"></label>
+        <button id="paperApply" type="button">Apply</button>
+      </div>
+      <p id="paperSettingsNote" class="shadowNote">Fee and slippage are editable illustrative assumptions, not verified exchange fees. Targets are gross price movements.</p>
+      <div id="paperSummary" class="shadowSummary">Waiting for verified signals…</div>
+      <div class="shadowTableWrap" role="region" aria-label="Paper trade outcomes" tabindex="0">
+        <table class="shadowTable"><thead><tr><th>Signal time</th><th>Side / entry</th><th>VWAP distance</th><th>Outcome</th><th>MFE / MAE</th><th>Time to exit</th><th>Est. net</th><th>TP / SL</th></tr></thead><tbody id="paperRows"></tbody></table>
+      </div>
+      <p class="shadowNote">Coinbase spot execution prices are a proxy for futures, not executable fills. No leverage, liquidation, funding or actual order-book liquidity modeled. MFE/MAE are the observed favorable/adverse price excursions until first target or timeout. Net is gross movement less assumed fees and slippage on entry and exit. Missing execution IDs are never skipped; if the path cannot be recovered, the result stays unresolved. Opening the page on an already-active signal does not create an entry. Stored in this browser, latest 120 entries; export for longer history. Not a backtest or proof of profitability.</p>
+    </section>
+
     <div class="bottom">
       <div class="bottomCell"><div class="bottomTitle">Source</div><div id="dataSource" class="bottomValue">Coinbase spot</div></div>
       <div class="bottomCell"><div class="bottomTitle">Window status</div><div id="windowStatus" class="bottomValue">partial</div></div>
@@ -1744,7 +1771,7 @@
   const MACRO_CACHE_KEY = "tc.macro.cache.v1";
   const MACRO_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const ET_ZONE = "America/New_York";
-  const BUILD_ID = "2026.11.24.3";
+  const BUILD_ID = "2026.11.25.1";
   const MARKET_CONTEXT_URL = "./market-context.json";
   // Last-known completed US spot ETF flows. Fallback only: a deployed
   // market-context.json replaces this snapshot automatically.
@@ -2926,6 +2953,7 @@
       el.technicalSummary.textContent=t.status==="error"?"Unavailable":"Loading";
       el.technicalSummarySub.innerHTML="Coinbase "+d.decisionMins+"m · <a class=\"sourceLink\" href=\""+el.crossCheckLink.href+"\" target=\"_blank\" rel=\"noopener\">TradingView check</a>";
     }
+    return d;
 
   }
 
@@ -3048,7 +3076,19 @@
       el.sellFill.style.width = "50%";
     }
 
-    renderDecision();
+    const decision=renderDecision();
+    // Paper observation only; receives the actual decision already displayed.
+    // A research exception must not affect production signals or the shadow study.
+    try {
+      if(window.TradesCounterPaper) window.TradesCounterPaper.observe({
+        now:Date.now(),product:el.product.value,windowMinutes:mins,threshold:th,
+        verified:decision.complete && windowComplete,action:decision.action,
+        price:state.lastPrice,vwap:bands.vwap,ratio:r.signed,techVotes:decision.aligned,
+        trades:state.trades
+      });
+    } catch(err) {
+      if(!state.paperErrorReported){state.paperErrorReported=true;console.warn("Optional paper study failed",err);}
+    }
 
     // Passive shadow research observer. Not connected to the trade decision
     // and deliberately isolated so a research fault cannot block live rendering.
@@ -3359,5 +3399,6 @@
 })();
 </script>
 <script src="./research/shadow-v1.js?v=2026.11.24.3" defer></script>
+<script src="./research/paper-v1.js?v=2026.11.25.1" defer></script>
 </body>
 </html>
